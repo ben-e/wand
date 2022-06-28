@@ -13,7 +13,7 @@ First implementation of {wand}, featuring data frame, formula, matrix, and recip
 - [ ] Expand implementation to both regression and classification.
 
 ### 0.2.0
-Improves {tidymodels} compatibility to {wand}, featuring {dial} tunable model parameters, including smooth parameters. This will allow users more tuning potential than the current {parsnip} implementation of `[gen_additive_mod](https://parsnip.tidymodels.org/reference/details_gen_additive_mod_mgcv.html)` built on {mgcv}.
+Improves {tidymodels} compatibility by adding {dial} tunable model parameters, including tuning for smooth model terms. This will allow users more tuning potential than the current {parsnip} implementation of `[gen_additive_mod](https://parsnip.tidymodels.org/reference/details_gen_additive_mod_mgcv.html)` built on {mgcv}.
 
 - [ ] Add tunable parameters for model optimization.
 - [ ] Add tunable parameters for specifying smooth parameters for each smooth.
