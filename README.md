@@ -26,3 +26,11 @@ Focuses on model explainability by adding `coef`, `summary`, and `plot` function
 - [ ] Implement `plot`.
 - [ ] PR for  {ggeffects} support.
 - [ ] PR for  {marginaleffects} support.
+
+### 0.4.0
+Expands documentation, adding a project website and vignettes.
+
+- [ ] Design hex.
+- [ ] Build website.
+- [ ] Write vignette: how does {wand} compare to {mgcv}.
+- [ ] Write vignette: {wand} workflow guide.
