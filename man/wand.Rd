@@ -13,13 +13,13 @@ wand(x, ...)
 
 \method{wand}{default}(x, ...)
 
-\method{wand}{data.frame}(x, y, ...)
+\method{wand}{data.frame}(x, y, smooth_features, epochs = 10L, ...)
 
-\method{wand}{matrix}(x, y, ...)
+\method{wand}{matrix}(x, y, smooth_features, epochs = 10L, ...)
 
-\method{wand}{formula}(formula, data, ...)
+\method{wand}{formula}(formula, data, smooth_features, epochs = 10L, ...)
 
-\method{wand}{recipe}(x, data, ...)
+\method{wand}{recipe}(x, data, smooth_features, epochs = 10L, ...)
 }
 \arguments{
 \item{x}{Depending on the context:

@@ -64,20 +64,16 @@ wand.default <- function(x, ...) {
 #' @rdname wand
 wand.data.frame <- function(x, y, smooth_features, epochs = 10L, ...) {
   processed <- hardhat::mold(x, y)
-
-  smooth_features <- names(dplyr::select(processed$predictors, {{ smooth_features }}))
-  smooth_feature_indices <- which(names(processed$predictors) %in% smooth_features)
-
-  wand_bridge(processed, smooth_feature_indices, epochs = epochs, ...)
+  wand_bridge(processed, smooth_features, epochs = epochs, ...)
 }
 
 # XY method - matrix
 
 #' @export
 #' @rdname wand
-wand.matrix <- function(x, y, smooth_feature_indices, epochs = 10L, ...) {
+wand.matrix <- function(x, y, smooth_features, epochs = 10L, ...) {
   processed <- hardhat::mold(x, y)
-  wand_bridge(processed, smooth_feature_indices, epochs = epochs, ...)
+  wand_bridge(processed, smooth_features, epochs = epochs, ...)
 }
 
 # Formula method
@@ -85,13 +81,13 @@ wand.matrix <- function(x, y, smooth_feature_indices, epochs = 10L, ...) {
 #' @export
 #' @rdname wand
 wand.formula <- function(formula, data, smooth_features, epochs = 10L, ...) {
-  processed <- hardhat::mold(formula, data)
-
   # TODO Extract smooth features and their associated params from the formula
-  smooth_features <- names(dplyr::select(processed$predictors, {{ smooth_features }}))
-  smooth_feature_indices <- which(names(processed$predictors) %in% smooth_features)
+  # then update the formula to contain all features specified in smooth, but without the s_
+  # functions. Should still respect transformations, e.g. s_mlp(log(x)) should become log(x) in
+  # the formula.
 
-  wand_bridge(processed, epochs = epochs, ...)
+  processed <- hardhat::mold(formula, data)
+  wand_bridge(processed, smooth_features, epochs = epochs, ...)
 }
 
 # Recipe method
@@ -100,32 +96,33 @@ wand.formula <- function(formula, data, smooth_features, epochs = 10L, ...) {
 #' @rdname wand
 wand.recipe <- function(x, data, smooth_features, epochs = 10L, ...) {
   processed <- hardhat::mold(x, data)
-
-  smooth_features <- names(dplyr::select(processed$predictors, {{ smooth_features }}))
-  smooth_feature_indices <- which(names(processed$predictors) %in% smooth_features)
-
-  wand_bridge(processed, smooth_feature_indices, epochs = epochs, ...)
+  wand_bridge(processed, smooth_features, epochs = epochs, ...)
 }
 
 # Bridge -------------------------------------------------------------------------------------------
 
-wand_bridge <- function(processed, smooth_feature_indices, epochs, ...) {
+wand_bridge <- function(processed, smooth_features, epochs, ...) {
   # Checks
   if(!torch::torch_is_installed()) {
     rlang::abort("The torch backend has not been installed; use `torch::install_torch()`.")
   }
-
   if (is.numeric(epochs) & !is.integer(epochs)) {
     epochs <- as.integer(epochs)
+  }
+
+  # Make sure smooth features are named
+  if (!missing(smooth_features) &&
+      (is.null(names(smooth_features)) & length(smooth_features) > 0)) {
+    names(smooth_features) <- paste0("smooth_", 1:length(smooth_features))
   }
 
   # Get processed data
   predictors <- processed$predictors
   outcome <- processed$outcomes[[1]]
 
-  # Fit modle
+  # Fit model
   fit <- wand_impl(predictors, outcome,
-                   smooth_feature_indices,
+                   smooth_features,
                    epochs = epochs)
 
   # Construct wand object
@@ -136,7 +133,7 @@ wand_bridge <- function(processed, smooth_feature_indices, epochs, ...) {
     validation_loss = fit$validation_loss,
     best_epoch = fit$best_epoch,
     validation_best_epoch = fit$validation_best_epoch,
-    smooth_parameters = fit$smooth_parameters,
+    smooth_features = fit$smooth_features,
     optimization_parameters = fit$optimization_parameters,
     blueprint = processed$blueprint
   )
@@ -144,23 +141,16 @@ wand_bridge <- function(processed, smooth_feature_indices, epochs, ...) {
 
 
 # Implementation -----------------------------------------------------------------------------------
-wand_impl <- function(x, y, smooth_feature_indices, epochs) {
+wand_impl <- function(x, y, smooth_features, epochs) {
   # set torch seed
   torch::torch_manual_seed(4242)
 
   # Load data into torch dataset, then a torch dataloader
-  ds <- matrix_to_wand_dataset(as.matrix(x), as.matrix(y), smooth_feature_indices)
+  ds <- build_wand_dataset(x, y, smooth_features)
   dl <- torch::dataloader(ds, batch_size = 32, shuffle = T)
 
-  # Initialize wand module
-  n_smooth_features <- length(smooth_feature_indices)
-  if (n_smooth_features > 0)
-    hidden_units <- lapply(1:n_smooth_features, \(x) c(32, 32, 16))
-  else
-    hidden_units <- list()
-
-  n_linear_features <- ncol(x) - n_smooth_features
-  model <- wand_module(n_linear_features, hidden_units)
+  # Initialize wand modules
+  model <- wand_module(ncol(ds$tensors$x_linear), smooth_features)
 
   # Initialize the optimizer
   # TODO optimizer should be an arg
@@ -181,7 +171,7 @@ wand_impl <- function(x, y, smooth_feature_indices, epochs) {
     # actual training - iterate over batches
     coro::loop(
       for (batch in dl) {
-        pred <- model(batch$x_linear, batch$x_smooth)
+        pred <- model(batch)
         # TODO loss fn should be an arg, as should class weights
         loss <- torch::nnf_mse_loss(pred$flatten(), batch$y$flatten())
 
@@ -193,7 +183,7 @@ wand_impl <- function(x, y, smooth_feature_indices, epochs) {
 
     # calculate whole training set loss and validation loss
     # TODO validation loss
-    pred <- model(dl$dataset$tensors$x_linear, dl$dataset$tensors$x_smooth)
+    pred <- model(dl$dataset$tensors)
     loss <- torch::nnf_mse_loss(pred$flatten(), dl$dataset$tensors$y$flatten())
 
     # save loss
@@ -227,7 +217,7 @@ wand_impl <- function(x, y, smooth_feature_indices, epochs) {
     validation_loss = val_loss_vec,
     best_epoch = best_epoch,
     validation_best_epoch = val_best_epoch,
-    smooth_parameters = list(),
+    smooth_features = list(),
     optimization_parameters = list(epochs = epochs)
   )
 }

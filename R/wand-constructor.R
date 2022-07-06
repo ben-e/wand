@@ -1,5 +1,5 @@
 new_wand <- function(model_obj, model_params_per_epoch, loss, validation_loss,
-                     best_epoch, validation_best_epoch, smooth_parameters,
+                     best_epoch, validation_best_epoch, smooth_features,
                      optimization_parameters, blueprint) {
   # if (!inherits(model_obj, "raw")) {
   #   rlang::abort("'model_obj' should be a raw vector.")
@@ -19,8 +19,8 @@ new_wand <- function(model_obj, model_params_per_epoch, loss, validation_loss,
   if (!is.vector(validation_best_epoch) || !is.integer(validation_best_epoch)) {
     rlang::abort("'validation_best_epoch' should be an integer")
   }
-  if (!is.list(smooth_parameters)) {
-    rlang::abort("'smooth_parameters' should be a list")
+  if (!is.list(smooth_features)) {
+    rlang::abort("'smooth_features' should be a list")
   }
   if (!is.list(optimization_parameters)) {
     rlang::abort("'optimization_parameters' should be a list")
@@ -36,7 +36,7 @@ new_wand <- function(model_obj, model_params_per_epoch, loss, validation_loss,
     validation_loss = validation_loss,
     best_epoch = best_epoch,
     validation_best_epoch = validation_best_epoch,
-    smooth_parameters = smooth_parameters,
+    smooth_features = smooth_features,
     optimization_parameters = optimization_parameters,
     blueprint = blueprint,
     class = "wand"
