@@ -12,6 +12,7 @@ First implementation of {wand}, featuring data frame, formula, matrix, and recip
 - [ ] Implement prediction methods.
 - [ ] Expand implementation to both regression and classification.
 - [ ] Add support for feature interactions, similar to {mgcv}'s `ti` and `te`.
+- [ ] Add tests for each user interface
 
 ### 0.2.0
 Improves {tidymodels} compatibility by adding {dial} tunable model parameters, including tuning for smooth model terms. This will allow users more tuning potential than the current {parsnip} implementation of `gen_additive_mod` built on {mgcv}.
