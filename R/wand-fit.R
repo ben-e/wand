@@ -80,11 +80,25 @@ wand.matrix <- function(x, y, smooth_features, epochs = 10L, ...) {
 
 #' @export
 #' @rdname wand
-wand.formula <- function(formula, data, smooth_features, epochs = 10L, ...) {
-  # TODO Extract smooth features and their associated params from the formula
-  # then update the formula to contain all features specified in smooth, but without the s_
-  # functions. Should still respect transformations, e.g. s_mlp(log(x)) should become log(x) in
-  # the formula.
+wand.formula <- function(formula, data, epochs = 10L, ...) {
+  # Get smooth features form the formula
+  smooth_features <- list()
+  for (term in attr(terms(formula), "term.labels")) {
+    # TODO I don't like that this assumes/requires that smoothers start with s_, perhaps
+    # use a registry of smoothers?
+    if (grepl("^s_", term)) {
+      # save smoother
+      smooth_features[[length(smooth_features) + 1]] <- eval(parse(text = term))
+      # update formula
+      # TODO I think this should be done using a blueprint, but I'm having trouble with those.
+      formula <- update(
+        formula,
+        paste0(". ~ . - ", term,
+               " + ",  paste0(sapply(smooth_features[[length(smooth_features)]]$features, quo_name),
+                              collapse = " + "))
+      )
+    }
+  }
 
   processed <- hardhat::mold(formula, data)
   wand_bridge(processed, smooth_features, epochs = epochs, ...)
