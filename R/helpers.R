@@ -10,7 +10,7 @@ build_wand_dataset <- function(x, y, smooth_features) {
   if (!missing(smooth_features)) {
     smooth_feature_names <- unlist(sapply(smooth_features,
                                           \(x) sapply(x$features, \(y) rlang::quo_name(y))))
-    linear_feature_names <- setdiff(names(x), smooth_feature_names)
+    linear_feature_names <- setdiff(colnames(x), smooth_feature_names)
   } else {
     linear_feature_names <- names(x)
   }
@@ -24,7 +24,7 @@ build_wand_dataset <- function(x, y, smooth_features) {
   if (!missing(smooth_features) && length(smooth_features) > 0) {
     for (i in 1:length(smooth_features)) {
       ds$tensors[[names(smooth_features)[i]]] <- torch::torch_tensor(
-        as.matrix(dplyr::select(x, !!!smooth_features[[i]]$features))
+        as.matrix(dplyr::transmute(x, !!!smooth_features[[i]]$features))
       )
     }
   }
