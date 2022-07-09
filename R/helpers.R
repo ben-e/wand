@@ -1,5 +1,5 @@
 #' Convert a matrix to a `wand` compatible `torch::dataset`.
-build_wand_dataset <- function(x, y, smooth_features) {
+build_wand_dataset <- function(x, y, smooth_features, requires_grad = T) {
   # Create dataset with linear features and outcome
 
   # TODO This prevents users from doing something like including a feature as a smooth and linear
@@ -16,15 +16,20 @@ build_wand_dataset <- function(x, y, smooth_features) {
   }
 
   ds <- torch::tensor_dataset(
-    x_linear = torch::torch_tensor(as.matrix(dplyr::select(x, !!linear_feature_names))),
-    y = torch::torch_tensor(as.matrix(y))
+    x_linear = torch::torch_tensor(as.matrix(dplyr::select(x, !!linear_feature_names)),
+                                   requires_grad = requires_grad),
+    y = torch::torch_tensor(as.matrix(y),
+                            requires_grad = requires_grad)
   )
 
   # Add smooth feature tensors
   if (!missing(smooth_features) && length(smooth_features) > 0) {
     for (i in 1:length(smooth_features)) {
       ds$tensors[[names(smooth_features)[i]]] <- torch::torch_tensor(
-        as.matrix(dplyr::transmute(x, !!!smooth_features[[i]]$features))
+        # TODO This transmute is performing computations (e.g. log(x)) that should probably be
+        # done using mold/blueprints
+        as.matrix(dplyr::transmute(x, !!!smooth_features[[i]]$features)),
+        requires_grad = requires_grad
       )
     }
   }

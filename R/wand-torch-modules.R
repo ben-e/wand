@@ -1,6 +1,10 @@
 # Smooth module ------------------------------------------------------------------------------------
 # These modules are made for smoothing features.
 
+# TODO It might be neat to have different versions of the MLP, e.g. a fast one, one with norm,
+# dropout, etc. I suppose some of these could just be parameters, but it might be hard to fully
+# expose all options.
+
 wand_mlp_module <- torch::nn_module(
   "wand_mlp_module",
   initialize = function(n_features, hidden_units) {
@@ -9,12 +13,15 @@ wand_mlp_module <- torch::nn_module(
 
     # input layer
     layers[[1]] <- torch::nn_linear(n_features, hidden_units[1])
-    layers[[2]] <- torch::nn_relu()
+    layers[[2]] <- torch::nn_batch_norm1d(hidden_units[1])
+    layers[[3]] <- torch::nn_relu()
 
     # hidden layers
-    for (i in 2:(length(hidden_units) - 1)) {
-      layers[[length(layers) + 1]] <- torch::nn_linear(hidden_units[i - 1], hidden_units[i])
-      layers[[length(layers) + 1]] <- torch::nn_relu()
+    if (length(hidden_units) > 2) {
+      for (i in 2:(length(hidden_units) - 1)) {
+        layers[[length(layers) + 1]] <- torch::nn_linear(hidden_units[i - 1], hidden_units[i])
+        layers[[length(layers) + 1]] <- torch::nn_relu()
+      }
     }
 
     # output layer
@@ -22,6 +29,7 @@ wand_mlp_module <- torch::nn_module(
     # provide?
     layers[[length(layers) + 1]] <- torch::nn_linear(hidden_units[length(hidden_units) - 1],
                                                      hidden_units[length(hidden_units)])
+    layers[[length(layers) + 1]] <- torch::nn_relu()
 
     # model
     self$model <- torch::nn_sequential(!!!layers)
