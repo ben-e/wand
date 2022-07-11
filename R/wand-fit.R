@@ -64,6 +64,9 @@ wand.default <- function(x, ...) {
 #' @rdname wand
 wand.data.frame <- function(x, y,
                             smooth_features,
+                            # batch
+                            batch_size = 32L,
+                            validation_prop = 0.1,
                             # training
                             epochs = 10L,
                             learn_rate = 0.01,
@@ -72,14 +75,15 @@ wand.data.frame <- function(x, y,
                             weight_decay = 0,
                             nesterov = F,
                             stop_iter = 5L,
-                            # batch
-                            batch_size = 32L,
+                            stop_iter_validation = 5L,
                             # misc
                             gpu = F,
                             ...) {
   processed <- hardhat::mold(x, y)
   wand_bridge(processed,
               smooth_features,
+              batch_size = batch_size,
+              validation_prop = validation_prop,
               epochs = epochs,
               learn_rate = learn_rate,
               momentum = momentum,
@@ -87,7 +91,7 @@ wand.data.frame <- function(x, y,
               weight_decay = weight_decay,
               nesterov = nesterov,
               stop_iter = stop_iter,
-              batch_size = batch_size,
+              stop_iter_validation = stop_iter_validation,
               gpu = gpu,
               ...)
 }
@@ -98,6 +102,9 @@ wand.data.frame <- function(x, y,
 #' @rdname wand
 wand.matrix <- function(x, y,
                         smooth_features,
+                        # batch
+                        batch_size = 32L,
+                        validation_prop = 0.1,
                         # training
                         epochs = 10L,
                         learn_rate = 0.01,
@@ -106,14 +113,15 @@ wand.matrix <- function(x, y,
                         weight_decay = 0,
                         nesterov = F,
                         stop_iter = 5L,
-                        # batch
-                        batch_size = 32L,
+                        stop_iter_validation = 5L,
                         # misc
                         gpu = F,
                         ...) {
   processed <- hardhat::mold(x, y)
   wand_bridge(processed,
               smooth_features,
+              batch_size = batch_size,
+              validation_prop = validation_prop,
               epochs = epochs,
               learn_rate = learn_rate,
               momentum = momentum,
@@ -121,7 +129,7 @@ wand.matrix <- function(x, y,
               weight_decay = weight_decay,
               nesterov = nesterov,
               stop_iter = stop_iter,
-              batch_size = batch_size,
+              stop_iter_validation = stop_iter_validation,
               gpu = gpu,
               ...)
 }
@@ -132,6 +140,9 @@ wand.matrix <- function(x, y,
 #' @rdname wand
 wand.formula <- function(formula,
                          data,
+                         # batch
+                         batch_size = 32L,
+                         validation_prop = 0.1,
                          # training
                          epochs = 10L,
                          learn_rate = 0.01,
@@ -140,8 +151,7 @@ wand.formula <- function(formula,
                          weight_decay = 0,
                          nesterov = F,
                          stop_iter = 5L,
-                         # batch
-                         batch_size = 32L,
+                         stop_iter_validation = 5L,
                          # misc
                          gpu = F,
                          ...) {
@@ -167,6 +177,8 @@ wand.formula <- function(formula,
   processed <- hardhat::mold(formula, data)
   wand_bridge(processed,
               smooth_features,
+              batch_size = batch_size,
+              validation_prop = validation_prop,
               epochs = epochs,
               learn_rate = learn_rate,
               momentum = momentum,
@@ -174,7 +186,7 @@ wand.formula <- function(formula,
               weight_decay = weight_decay,
               nesterov = nesterov,
               stop_iter = stop_iter,
-              batch_size = batch_size,
+              stop_iter_validation = stop_iter_validation,
               gpu = gpu,
               ...)
 }
@@ -186,6 +198,9 @@ wand.formula <- function(formula,
 wand.recipe <- function(x,
                         data,
                         smooth_features,
+                        # batch
+                        batch_size = 32L,
+                        validation_prop = 0.1,
                         # training
                         epochs = 10L,
                         learn_rate = 0.01,
@@ -194,14 +209,15 @@ wand.recipe <- function(x,
                         weight_decay = 0,
                         nesterov = F,
                         stop_iter = 5L,
-                        # batch
-                        batch_size = 32L,
+                        stop_iter_validation = 5L,
                         # misc
                         gpu = F,
                         ...) {
   processed <- hardhat::mold(x, data)
   wand_bridge(processed,
               smooth_features,
+              batch_size = batch_size,
+              validation_prop = validation_prop,
               epochs = epochs,
               learn_rate = learn_rate,
               momentum = momentum,
@@ -209,7 +225,7 @@ wand.recipe <- function(x,
               weight_decay = weight_decay,
               nesterov = nesterov,
               stop_iter = stop_iter,
-              batch_size = batch_size,
+              stop_iter_validation = stop_iter_validation,
               gpu = gpu,
               ...)
 }
@@ -218,6 +234,9 @@ wand.recipe <- function(x,
 
 wand_bridge <- function(processed,
                         smooth_features,
+                        # batch
+                        batch_size = 32L,
+                        validation_prop = 0.1,
                         # training
                         epochs = 10L,
                         learn_rate = 0.01,
@@ -226,8 +245,7 @@ wand_bridge <- function(processed,
                         weight_decay = 0,
                         nesterov = F,
                         stop_iter = 5L,
-                        # batch
-                        batch_size = 32L,
+                        stop_iter_validation = 5L,
                         # misc
                         gpu = F,
                         ...) {
@@ -252,6 +270,8 @@ wand_bridge <- function(processed,
   # Fit model
   fit <- wand_impl(predictors, outcome,
                    smooth_features,
+                   batch_size = batch_size,
+                   validation_prop = validation_prop,
                    epochs = epochs,
                    learn_rate = learn_rate,
                    momentum = momentum,
@@ -259,7 +279,7 @@ wand_bridge <- function(processed,
                    weight_decay = weight_decay,
                    nesterov = nesterov,
                    stop_iter = stop_iter,
-                   batch_size = batch_size,
+                   stop_iter_validation = stop_iter_validation,
                    gpu = gpu)
 
   # Construct wand object
@@ -280,6 +300,8 @@ wand_bridge <- function(processed,
 # Implementation -----------------------------------------------------------------------------------
 wand_impl <- function(x, y,
                       smooth_features,
+                      batch_size,
+                      validation_prop,
                       epochs,
                       learn_rate,
                       momentum,
@@ -287,7 +309,7 @@ wand_impl <- function(x, y,
                       weight_decay,
                       nesterov,
                       stop_iter,
-                      batch_size,
+                      stop_iter_validation,
                       gpu) {
   # set torch seed
   torch::torch_manual_seed(4242)
@@ -307,7 +329,7 @@ wand_impl <- function(x, y,
     x <- x[-in_val, , drop = FALSE]
     y <- y[-in_val]
 
-    ds_val <- build_wand_dataset(x, y, smooth_features, requires_grad = F)
+    ds_val <- build_wand_dataset(x_val, y_val, smooth_features, requires_grad = F)
   }
   ds <- build_wand_dataset(x, y, smooth_features)
   dl <- torch::dataloader(ds, batch_size = batch_size)
@@ -335,6 +357,7 @@ wand_impl <- function(x, y,
   val_loss_vec <- rep(NA_real_, epochs)
   consec_iters_without_val_improvement <- 0
   model_params_per_epoch <- list()
+  signif_digits <- 4
 
   # Run training loop
   for (epoch in 1:epochs) {
@@ -343,7 +366,7 @@ wand_impl <- function(x, y,
       for (batch in dl) {
         pred <- model(batch)
         # TODO loss fn should be an arg, as should class weights
-        loss <- torch::nnf_mse_loss(pred$flatten(), batch$y$flatten())
+        loss <- torch::nnf_mse_loss(pred, batch$y)
 
         optimizer$zero_grad()
         loss$backward()
@@ -353,39 +376,44 @@ wand_impl <- function(x, y,
 
     # calculate whole training set loss and validation loss
     pred <- model(ds$tensors)
-    loss <- torch::nnf_mse_loss(pred$flatten(), ds$tensors$y$flatten())
-    if (validation_prop > 0) {
-      pred_val <- model(ds_val$tensors)
-      loss_val <- torch::nnf_mse_loss(pred_val$flatten(), ds_val$tensors)
-    }
-
-    # save loss
+    loss <- torch::nnf_mse_loss(pred, ds$tensors$y)
     loss_current <- loss$item()
     loss_vec[epoch] <- loss_current
 
-    if (loss_current < loss_min) {
-      loss_min <- loss_current
+    if (validation_prop > 0) {
+      pred_val <- model(ds_val$tensors)
+      loss_val <- torch::nnf_mse_loss(pred_val, ds_val$tensors$y)
+      val_loss_current <- loss_val$item()
+      val_loss_vec[epoch] <- val_loss_current
+    }
+
+    if (signif(loss_current, signif_digits) < loss_min) {
+      loss_min <- signif(loss_current, signif_digits)
       best_epoch <- epoch
       consec_iters_without_improvement <- 0
     } else {
       consec_iters_without_improvement <- consec_iters_without_improvement + 1
     }
 
-    # TODO validation
-    # if (val_loss_current < val_loss_min) {
-    #   val_loss_min <- val_loss_current
-    #   val_best_epoch <- epoch
-    # }
-
-    # TODO Save model params
+    if (signif(val_loss_current, 4) < val_loss_min) {
+      val_loss_min <- signif(val_loss_current, 4)
+      val_best_epoch <- val_best_epoch
+      consec_iters_without_val_improvement <- 0
+    } else {
+      consec_iters_without_val_improvement <- consec_iters_without_val_improvement + 1
+    }
 
     # Update user
-    # TODO validation loss
     msg <- paste0("epoch: ", epoch,
-                  " loss: ", signif(loss_current, 5),
-                  " val_loss: ", signif(loss_val$item(), 5))
+                  " loss: ", signif(loss_current, signif_digits),
+                  " val_loss: ", signif(val_loss_current, signif_digits))
     rlang::inform(msg)
   }
+
+  # Break if no improvement
+  if (consec_iters_without_improvement >= stop_iter ||
+      consec_iters_without_val_improvement >= stop_iter_validation)
+    break()
 
   # Return model
   list(

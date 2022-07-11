@@ -118,6 +118,6 @@ wand_module <- torch::nn_module(
     x <- torch::torch_cat(list(x$x_linear, x_smooth_out), dim = 2)
 
     # Linear output
-    self$linear_module(x)
+    self$linear_module(x)$flatten()
   }
 )
