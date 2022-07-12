@@ -13,8 +13,7 @@ wand_mlp_module <- torch::nn_module(
 
     # input layer
     layers[[1]] <- torch::nn_linear(n_features, hidden_units[1])
-    layers[[2]] <- torch::nn_batch_norm1d(hidden_units[1])
-    layers[[3]] <- torch::nn_relu()
+    layers[[2]] <- torch::nn_relu()
 
     # hidden layers
     if (length(hidden_units) > 2) {
@@ -25,11 +24,8 @@ wand_mlp_module <- torch::nn_module(
     }
 
     # output layer
-    # TODO should output layer have an activation function? I don't see what utility it would
-    # provide?
     layers[[length(layers) + 1]] <- torch::nn_linear(hidden_units[length(hidden_units) - 1],
                                                      hidden_units[length(hidden_units)])
-    layers[[length(layers) + 1]] <- torch::nn_relu()
 
     # model
     self$model <- torch::nn_sequential(!!!layers)

@@ -357,7 +357,7 @@ wand_impl <- function(x, y,
   val_loss_vec <- rep(NA_real_, epochs)
   consec_iters_without_val_improvement <- 0
   model_params_per_epoch <- list()
-  stopping_tolerance <- 4
+  stopping_tolerance <- 5
 
   # Run training loop
   for (epoch in 1:epochs) {
@@ -366,6 +366,7 @@ wand_impl <- function(x, y,
       for (batch in dl) {
         pred <- model(batch)
         # TODO loss fn should be an arg, as should class weights
+        # and penalized loss (L1, L2 ala brulee) should be an option.
         loss <- torch::nnf_mse_loss(pred, batch$y)
 
         optimizer$zero_grad()
