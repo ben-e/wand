@@ -357,7 +357,7 @@ wand_impl <- function(x, y,
   val_loss_vec <- rep(NA_real_, epochs)
   consec_iters_without_val_improvement <- 0
   model_params_per_epoch <- list()
-  signif_digits <- 4
+  stopping_tolerance <- 4
 
   # Run training loop
   for (epoch in 1:epochs) {
@@ -377,26 +377,26 @@ wand_impl <- function(x, y,
     # calculate whole training set loss and validation loss
     pred <- model(ds$tensors)
     loss <- torch::nnf_mse_loss(pred, ds$tensors$y)
-    loss_current <- loss$item()
+    loss_current <- round(loss$item(), stopping_tolerance)
     loss_vec[epoch] <- loss_current
 
     if (validation_prop > 0) {
       pred_val <- model(ds_val$tensors)
       loss_val <- torch::nnf_mse_loss(pred_val, ds_val$tensors$y)
-      val_loss_current <- loss_val$item()
+      val_loss_current <- round(loss_val$item(), stopping_tolerance)
       val_loss_vec[epoch] <- val_loss_current
     }
 
-    if (signif(loss_current, signif_digits) < loss_min) {
-      loss_min <- signif(loss_current, signif_digits)
+    if (loss_current < loss_min) {
+      loss_min <- loss_current
       best_epoch <- epoch
       consec_iters_without_improvement <- 0
     } else {
       consec_iters_without_improvement <- consec_iters_without_improvement + 1
     }
 
-    if (signif(val_loss_current, 4) < val_loss_min) {
-      val_loss_min <- signif(val_loss_current, 4)
+    if (val_loss_current < val_loss_min) {
+      val_loss_min <- val_loss_current
       val_best_epoch <- val_best_epoch
       consec_iters_without_val_improvement <- 0
     } else {
@@ -405,15 +405,16 @@ wand_impl <- function(x, y,
 
     # Update user
     msg <- paste0("epoch: ", epoch,
-                  " loss: ", signif(loss_current, signif_digits),
-                  " val_loss: ", signif(val_loss_current, signif_digits))
+                  " loss: ", loss_current,
+                  " val_loss: ", val_loss_current)
     rlang::inform(msg)
-  }
 
-  # Break if no improvement
-  if (consec_iters_without_improvement >= stop_iter ||
-      consec_iters_without_val_improvement >= stop_iter_validation)
-    break()
+    # Break if no improvement
+    if (consec_iters_without_val_improvement >= stop_iter_validation |
+        consec_iters_without_improvement >= stop_iter) {
+      break()
+    }
+  }
 
   # Return model
   list(
