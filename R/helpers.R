@@ -18,10 +18,12 @@ build_wand_dataset <- function(x, y, smooth_features, requires_grad = T) {
   ds <- torch::tensor_dataset(
     x_linear = torch::torch_tensor(as.matrix(dplyr::select(x, !!linear_feature_names)),
                                    requires_grad = requires_grad),
-    # TODO support multidim y
-    y = torch::torch_tensor(as.vector(y),
-                            requires_grad = requires_grad)
   )
+
+  # TODO support multidim y
+  if (!missing(y)) {
+    ds$tensors[['y']] = torch::torch_tensor(as.vector(y), requires_grad = requires_grad)
+  }
 
   # Add smooth feature tensors
   if (!missing(smooth_features) && length(smooth_features) > 0) {

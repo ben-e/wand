@@ -434,13 +434,14 @@ wand_impl <- function(x, y,
     }
   }
 
-  # Rather than saving the actual smooth module objects we'll just save the module's classname
   if (!(missing(smooth_features))) {
-    for (i in 1:length(smooth_features)) {
-      smooth_features[[i]]$torch_module <- smooth_features[[i]]$torch_module$classname
-      # TODO should I convert the quosures to strings?
-      # smooth_features[[i]]$features <- sapply(smooth_features[[i]]$features, quo_name)
-    }
+    # TODO Actually, it is useful to have the module. Is it costly?
+    # Rather than saving the actual smooth module objects we'll just save the module's classname.
+    # for (i in 1:length(smooth_features)) {
+    # smooth_features[[i]]$torch_module <- smooth_features[[i]]$torch_module$classname
+    # TODO should I convert the quosures to strings?
+    # smooth_features[[i]]$features <- sapply(smooth_features[[i]]$features, quo_name)
+    # }
   } else {
     smooth_features <- list()
   }
@@ -456,8 +457,16 @@ wand_impl <- function(x, y,
     best_model_params = best_model_params,
     validation_best_model_params = validation_best_model_params,
     smooth_features = smooth_features,
-    optimization_parameters = list(epochs = epochs,
+    optimization_parameters = list(batch_size = batch_size,
+                                   validation_prop = validation_prop,
+                                   epochs = epochs,
                                    learn_rate = learn_rate,
-                                   batch_size = batch_size)
+                                   momentum = momentum,
+                                   dampening = dampening,
+                                   weight_decay = weight_decay,
+                                   nesterov = nesterov,
+                                   stop_iter = stop_iter,
+                                   stop_iter_validation = stop_iter_validation,
+                                   gpu = gpu)
   )
 }
