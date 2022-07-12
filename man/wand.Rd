@@ -13,13 +13,37 @@ wand(x, ...)
 
 \method{wand}{default}(x, ...)
 
-\method{wand}{data.frame}(x, y, smooth_features, epochs = 10L, ...)
+\method{wand}{data.frame}(
+  x,
+  y,
+  smooth_specs,
+  batch_size = 32,
+  validation_prop = 0.1,
+  epochs = 10,
+  ...
+)
 
-\method{wand}{matrix}(x, y, smooth_features, epochs = 10L, ...)
+\method{wand}{matrix}(
+  x,
+  y,
+  smooth_specs,
+  batch_size = 32,
+  validation_prop = 0.1,
+  epochs = 10,
+  ...
+)
 
-\method{wand}{formula}(formula, data, smooth_features, epochs = 10L, ...)
+\method{wand}{formula}(formula, data, batch_size = 32, validation_prop = 0.1, epochs = 10, ...)
 
-\method{wand}{recipe}(x, data, smooth_features, epochs = 10L, ...)
+\method{wand}{recipe}(
+  x,
+  data,
+  smooth_specs,
+  batch_size = 32,
+  validation_prop = 0.1,
+  epochs = 10,
+  ...
+)
 }
 \arguments{
 \item{x}{Depending on the context:

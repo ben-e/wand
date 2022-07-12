@@ -1,5 +1,3 @@
-# user Interface -----------------------------------------------------------------------------------
-
 #' Fit a `wand`
 #'
 #' `wand()` fits a model.
@@ -62,315 +60,194 @@ wand.default <- function(x, ...) {
 
 #' @export
 #' @rdname wand
-wand.data.frame <- function(x, y,
-                            smooth_features,
+wand.data.frame <- function(x, y, smooth_specs,
                             # batch
-                            batch_size = 32L,
+                            batch_size = 32,
                             validation_prop = 0.1,
                             # training
-                            epochs = 10L,
-                            learn_rate = 0.01,
-                            momentum = 0,
-                            dampening = 0,
-                            weight_decay = 0,
-                            nesterov = F,
-                            stop_iter = 5L,
-                            stop_iter_validation = 5L,
-                            # misc
-                            gpu = F,
+                            epochs = 10,
                             ...) {
   processed <- hardhat::mold(x, y)
-  wand_bridge(processed,
-              smooth_features,
-              batch_size = batch_size,
-              validation_prop = validation_prop,
-              epochs = epochs,
-              learn_rate = learn_rate,
-              momentum = momentum,
-              dampening = dampening,
-              weight_decay = weight_decay,
-              nesterov = nesterov,
-              stop_iter = stop_iter,
-              stop_iter_validation = stop_iter_validation,
-              gpu = gpu,
-              ...)
+  wand_bridge(
+    processed,
+    smooth_specs,
+    batch_size = batch_size,
+    validation_prop = validation_prop,
+    epochs = epochs,
+    ...
+  )
 }
 
 # XY method - matrix
 
 #' @export
 #' @rdname wand
-wand.matrix <- function(x, y,
-                        smooth_features,
+wand.matrix <- function(x, y, smooth_specs,
                         # batch
-                        batch_size = 32L,
+                        batch_size = 32,
                         validation_prop = 0.1,
                         # training
-                        epochs = 10L,
-                        learn_rate = 0.01,
-                        momentum = 0,
-                        dampening = 0,
-                        weight_decay = 0,
-                        nesterov = F,
-                        stop_iter = 5L,
-                        stop_iter_validation = 5L,
-                        # misc
-                        gpu = F,
+                        epochs = 10,
                         ...) {
   processed <- hardhat::mold(x, y)
-  wand_bridge(processed,
-              smooth_features,
-              batch_size = batch_size,
-              validation_prop = validation_prop,
-              epochs = epochs,
-              learn_rate = learn_rate,
-              momentum = momentum,
-              dampening = dampening,
-              weight_decay = weight_decay,
-              nesterov = nesterov,
-              stop_iter = stop_iter,
-              stop_iter_validation = stop_iter_validation,
-              gpu = gpu,
-              ...)
+  wand_bridge(
+    processed,
+    smooth_specs,
+    batch_size = batch_size,
+    validation_prop = validation_prop,
+    epochs = epochs,
+    ...
+  )
 }
 
 # Formula method
 
 #' @export
 #' @rdname wand
-wand.formula <- function(formula,
-                         data,
+wand.formula <- function(formula, data,
                          # batch
-                         batch_size = 32L,
+                         batch_size = 32,
                          validation_prop = 0.1,
                          # training
-                         epochs = 10L,
-                         learn_rate = 0.01,
-                         momentum = 0,
-                         dampening = 0,
-                         weight_decay = 0,
-                         nesterov = F,
-                         stop_iter = 5L,
-                         stop_iter_validation = 5L,
-                         # misc
-                         gpu = F,
+                         epochs = 10,
                          ...) {
-  # Get smooth features form the formula
-  smooth_features <- list()
+  # Get smooth specs form the formula
+  smooth_specs <- list()
   for (term in attr(terms(formula), "term.labels")) {
     # TODO I don't like that this assumes/requires that smoothers start with s_, perhaps
     # use a registry of smoothers?
     if (grepl("^s_", term)) {
       # save smoother
-      smooth_features[[length(smooth_features) + 1]] <- eval(parse(text = term))
+      smooth_specs[[length(smooth_specs) + 1]] <- eval(parse(text = term))
       # update formula
       # TODO I think this should be done using a blueprint, but I'm having trouble with those.
       formula <- update(
         formula,
         paste0(". ~ . - ", term,
-               " + ",  paste0(sapply(smooth_features[[length(smooth_features)]]$features, quo_name),
+               " + ",  paste0(sapply(smooth_specs[[length(smooth_specs)]]$features,
+                                     rlang::quo_name),
                               collapse = " + "))
       )
     }
   }
 
   processed <- hardhat::mold(formula, data)
-  wand_bridge(processed,
-              smooth_features,
-              batch_size = batch_size,
-              validation_prop = validation_prop,
-              epochs = epochs,
-              learn_rate = learn_rate,
-              momentum = momentum,
-              dampening = dampening,
-              weight_decay = weight_decay,
-              nesterov = nesterov,
-              stop_iter = stop_iter,
-              stop_iter_validation = stop_iter_validation,
-              gpu = gpu,
-              ...)
+  wand_bridge(
+    processed,
+    smooth_specs = smooth_specs,
+    batch_size = batch_size,
+    validation_prop = validation_prop,
+    epochs = epochs,
+    ...
+  )
 }
 
 # Recipe method
 
 #' @export
 #' @rdname wand
-wand.recipe <- function(x,
-                        data,
-                        smooth_features,
+wand.recipe <- function(x, data,
+                        smooth_specs,
                         # batch
-                        batch_size = 32L,
+                        batch_size = 32,
                         validation_prop = 0.1,
                         # training
-                        epochs = 10L,
-                        learn_rate = 0.01,
-                        momentum = 0,
-                        dampening = 0,
-                        weight_decay = 0,
-                        nesterov = F,
-                        stop_iter = 5L,
-                        stop_iter_validation = 5L,
-                        # misc
-                        gpu = F,
+                        epochs = 10,
                         ...) {
   processed <- hardhat::mold(x, data)
-  wand_bridge(processed,
-              smooth_features,
-              batch_size = batch_size,
-              validation_prop = validation_prop,
-              epochs = epochs,
-              learn_rate = learn_rate,
-              momentum = momentum,
-              dampening = dampening,
-              weight_decay = weight_decay,
-              nesterov = nesterov,
-              stop_iter = stop_iter,
-              stop_iter_validation = stop_iter_validation,
-              gpu = gpu,
-              ...)
+  wand_bridge(
+    processed,
+    smooth_specs,
+    batch_size = batch_size,
+    validation_prop = validation_prop,
+    epochs = epochs,
+    ...
+  )
 }
 
-# Bridge -------------------------------------------------------------------------------------------
+# --------------------------------------------------------------------------------------------------
+# Bridge
 
-wand_bridge <- function(processed,
-                        smooth_features,
+wand_bridge <- function(processed, smooth_specs,
                         # batch
-                        batch_size = 32L,
-                        validation_prop = 0.1,
+                        batch_size,
+                        validation_prop,
                         # training
-                        epochs = 10L,
-                        learn_rate = 0.01,
-                        momentum = 0,
-                        dampening = 0,
-                        weight_decay = 0,
-                        nesterov = F,
-                        stop_iter = 5L,
-                        stop_iter_validation = 5L,
-                        # misc
-                        gpu = F,
+                        epochs,
                         ...) {
-  # Checks
-  if(!torch::torch_is_installed()) {
-    rlang::abort("The torch backend has not been installed; use `torch::install_torch()`.")
-  }
-  if (is.numeric(epochs) & !is.integer(epochs)) {
-    epochs <- as.integer(epochs)
-  }
-  # TODO check all params
-
-  # Make sure smooth features are named
-  if (!missing(smooth_features) &&
-      (is.null(names(smooth_features)) & length(smooth_features) > 0)) {
-    names(smooth_features) <- paste0("smooth_", 1:length(smooth_features))
-  }
-
-  # Get processed data
   predictors <- processed$predictors
   outcome <- processed$outcomes[[1]]
 
-  # Fit model
-  fit <- wand_impl(predictors, outcome,
-                   smooth_features,
-                   batch_size = batch_size,
-                   validation_prop = validation_prop,
-                   epochs = epochs,
-                   learn_rate = learn_rate,
-                   momentum = momentum,
-                   dampening = dampening,
-                   weight_decay = weight_decay,
-                   nesterov = nesterov,
-                   stop_iter = stop_iter,
-                   stop_iter_validation = stop_iter_validation,
-                   gpu = gpu)
+  if (!rlang::is_missing(smooth_specs) && is.null(names(smooth_specs)))
+    names(smooth_specs) <- paste0("smooth_", 1:length(smooth_specs))
 
-  # Construct wand object
+  fit <- wand_impl(
+    predictors, outcome,
+    smooth_specs,
+    # batch
+    batch_size,
+    validation_prop,
+    # training
+    epochs
+  )
+
   new_wand(
     model_obj = fit$model_obj,
-    # model_params_per_epoch = fit$model_params_per_epoch,
-    loss = fit$loss,
-    validation_loss = fit$validation_loss,
-    best_epoch = fit$best_epoch,
-    validation_best_epoch = fit$validation_best_epoch,
+    smooth_specs = fit$smooth_specs,
     best_model_params = fit$best_model_params,
-    validation_best_model_params = fit$validation_best_model_params,
-    smooth_features = fit$smooth_features,
-    optimization_parameters = fit$optimization_parameters,
     blueprint = processed$blueprint
   )
 }
 
 
-# Implementation -----------------------------------------------------------------------------------
-wand_impl <- function(x, y,
-                      smooth_features,
+# --------------------------------------------------------------------------------------------------
+# Implementation
+
+wand_impl <- function(predictors, outcome,
+                      smooth_specs,
+                      # batch
                       batch_size,
                       validation_prop,
-                      epochs,
-                      learn_rate,
-                      momentum,
-                      dampening,
-                      weight_decay,
-                      nesterov,
-                      stop_iter,
-                      stop_iter_validation,
-                      gpu) {
-  # set torch seed
+                      # training
+                      epochs) {
   torch::torch_manual_seed(4242)
 
-  # check args
-  if (gpu)
-    rlang::warn("GPU support is not currently implemented.")
-
-  # Load data into torch dataset, then a torch dataloader
-  # including validation data
-  # straight from brulee, thank you :)
-  validation_prop <- 0.1
+  # Build dataset and dataloader
   if (validation_prop > 0) {
-    in_val <- sample(seq_along(y), floor(length(y) * validation_prop))
-    x_val <- x[in_val, , drop = FALSE]
-    y_val <- y[in_val]
-    x <- x[-in_val, , drop = FALSE]
-    y <- y[-in_val]
+    in_val <- sample(seq_along(outcome), floor(length(outcome) * validation_prop))
+    predictors_val <- predictors[in_val, , drop = FALSE]
+    outcome_val <- outcome[in_val]
 
-    ds_val <- build_wand_dataset(x_val, y_val, smooth_features, requires_grad = F)
+    predictors <- predictors[-in_val, , drop = FALSE]
+    outcome <- outcome[-in_val]
+
+    ds_val <- build_wand_dataset(predictors_val, outcome_val, smooth_specs, requires_grad = F)
   }
-  ds <- build_wand_dataset(x, y, smooth_features)
+  ds <- build_wand_dataset(predictors, outcome, smooth_specs, requires_grad = T)
   dl <- torch::dataloader(ds, batch_size = batch_size)
 
   # Initialize wand modules
-  model <- wand_module(ncol(ds$tensors$x_linear), smooth_features)
+  model <- wand_module(ncol(ds$tensors$x_linear), smooth_specs, "regression")
 
-  # Initialize the optimizer
-  # TODO users should be able to pass in an optimizer and corresponding arguments
-  optimizer <- torch::optim_sgd(model$parameters,
-                                lr = learn_rate,
-                                momentum = momentum,
-                                dampening = dampening,
-                                weight_decay = weight_decay,
-                                nesterov = nesterov)
+  # Initialize optimizer
+  optimizer <- torch::optim_sgd(model$parameters, lr = 0.01)
 
-  # Initialize vectors/lists that track training
-  # TODO epochs should be an arg
+  # Store results of the training loop
   loss_min <- 10^38
-  best_epoch <- 1L
   loss_vec <- rep(NA_real_, epochs)
-  consec_iters_without_improvement <- 0
-  val_loss_min <- 10^38
-  val_best_epoch <- 1L
   val_loss_vec <- rep(NA_real_, epochs)
-  consec_iters_without_val_improvement <- 0
-  # model_params_per_epoch <- list()
-  stopping_tolerance <- 5
+  val_loss_current <- NA
+  loss_tol <- 5
+  stop_iter <- 5
+  consec_iters_without_improvement <- 0
 
-  # Run training loop
+  # Iterate over epochs
   for (epoch in 1:epochs) {
-    # actual training - iterate over batches
+    # Iterate over batches
     coro::loop(
       for (batch in dl) {
         pred <- model(batch)
-        # TODO loss fn should be an arg, as should class weights
-        # and penalized loss (L1, L2 ala brulee) should be an option.
-        loss <- torch::nnf_mse_loss(pred, batch$y)
+        loss <- torch::nnf_mse_loss(pred[, 1], batch$y)
 
         optimizer$zero_grad()
         loss$backward()
@@ -378,95 +255,51 @@ wand_impl <- function(x, y,
       }
     )
 
-    # calculate whole training set loss and validation loss
-    pred <- model(ds$tensors)
-    loss <- torch::nnf_mse_loss(pred, ds$tensors$y)
-    loss_current <- round(loss$item(), stopping_tolerance)
+    # Save loss and track whether or not loss is improving
+    loss_current <- round(loss$item(), loss_tol)
     loss_vec[epoch] <- loss_current
-
     if (validation_prop > 0) {
       pred_val <- model(ds_val$tensors)
-      loss_val <- torch::nnf_mse_loss(pred_val, ds_val$tensors$y)
-      val_loss_current <- round(loss_val$item(), stopping_tolerance)
+      loss <- torch::nnf_mse_loss(pred_val[, 1], ds_val$tensors$y)
+      val_loss_current <- round(loss$item(), loss_tol)
       val_loss_vec[epoch] <- val_loss_current
-    }
 
-    if (is.nan(loss_current) | is.nan(val_loss_current)) {
-      rlang::warn(paste0("The loss function has returned a nan,",
-                         "try normalizing data or lowering learning rate.",
-                         " Training will stop at this epoch."))
-      break()
-    }
-
-    if (loss_current < loss_min) {
-      loss_min <- loss_current
-      best_epoch <- epoch
-      consec_iters_without_improvement <- 0
-      best_model_params <- lapply(model$state_dict(), torch::as_array)
+      if (val_loss_current < loss_min) {
+        loss_min <- val_loss_current
+        consec_iters_without_improvement <- 0
+        best_model_params <- lapply(model$state_dict(), torch::as_array)
+      } else {
+        consec_iters_without_improvement <- consec_iters_without_improvement + 1
+      }
     } else {
-      consec_iters_without_improvement <- consec_iters_without_improvement + 1
+      if (loss_current < loss_min) {
+        loss_min <- loss_current
+        consec_iters_without_improvement <- 0
+        best_model_params <- lapply(model$state_dict(), torch::as_array)
+      } else {
+        consec_iters_without_improvement <- consec_iters_without_improvement + 1
+      }
+
     }
 
-    if (val_loss_current < val_loss_min) {
-      val_loss_min <- val_loss_current
-      val_best_epoch <- val_best_epoch
-      consec_iters_without_val_improvement <- 0
-      validation_best_model_params <- lapply(model$state_dict(), torch::as_array)
-    } else {
-      consec_iters_without_val_improvement <- consec_iters_without_val_improvement + 1
-    }
+    # Report back to the user
+    rlang::inform(paste0("epoch: ", epoch,
+                         ", loss: ", loss_current,
+                         ", validation loss: ", val_loss_current))
 
-    # Save params for each epoch
-    # TODO Is this actually useful for users? What does glmnet do with weights like this?
-    # Allow users to save this as an arg?
-    # model_params_per_epoch[[epoch]] <- lapply(model$state_dict(), torch::as_array)
-
-    # Update user
-    msg <- paste0("epoch: ", epoch,
-                  " loss: ", loss_current,
-                  " val_loss: ", val_loss_current)
-    rlang::inform(msg)
-
-    # Break if no improvement
-    if (consec_iters_without_val_improvement >= stop_iter_validation |
-        consec_iters_without_improvement >= stop_iter) {
+    # Stop if there's no improvement
+    if (consec_iters_without_improvement >= stop_iter) {
+      rlang::inform(paste0("No improvement for the last ",
+                           consec_iters_without_improvement,
+                           " epochs. Stopping."))
       break()
     }
   }
 
-  if (!(missing(smooth_features))) {
-    # TODO Actually, it is useful to have the module. Is it costly?
-    # Rather than saving the actual smooth module objects we'll just save the module's classname.
-    # for (i in 1:length(smooth_features)) {
-    # smooth_features[[i]]$torch_module <- smooth_features[[i]]$torch_module$classname
-    # TODO should I convert the quosures to strings?
-    # smooth_features[[i]]$features <- sapply(smooth_features[[i]]$features, quo_name)
-    # }
-  } else {
-    smooth_features <- list()
-  }
-
-  # Return model
+  # return
   list(
-    model_obj = dehydrate_model(model),
-    # model_params_per_epoch = model_params_per_epoch,
-    loss = loss_vec,
-    validation_loss = val_loss_vec,
-    best_epoch = best_epoch,
-    validation_best_epoch = val_best_epoch,
-    best_model_params = best_model_params,
-    validation_best_model_params = validation_best_model_params,
-    smooth_features = smooth_features,
-    optimization_parameters = list(batch_size = batch_size,
-                                   validation_prop = validation_prop,
-                                   epochs = epochs,
-                                   learn_rate = learn_rate,
-                                   momentum = momentum,
-                                   dampening = dampening,
-                                   weight_decay = weight_decay,
-                                   nesterov = nesterov,
-                                   stop_iter = stop_iter,
-                                   stop_iter_validation = stop_iter_validation,
-                                   gpu = gpu)
+    model_obj = model,
+    smooth_specs = if (rlang::is_missing(smooth_specs)) list() else smooth_specs,
+    best_model_params = 1
   )
 }
