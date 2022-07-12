@@ -36,3 +36,25 @@ build_wand_dataset <- function(x, y, smooth_features, requires_grad = T) {
   }
   ds
 }
+
+#' Save models to raw objects.
+#'
+#' Directly from brulee.
+dehydrate_model <- function(model) {
+  con <- rawConnection(raw(), open = "w")
+  on.exit({close(con)}, add = TRUE)
+  torch::torch_save(model, con)
+  r <- rawConnectionValue(con)
+  r
+}
+
+#' Load models from raw objects.
+#'
+#' Also, directly from brulee.
+hydrate_model <- function(model) {
+  con <- rawConnection(model)
+  on.exit({close(con)}, add = TRUE)
+  module <- torch::torch_load(con)
+  module
+}
+

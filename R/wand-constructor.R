@@ -1,11 +1,25 @@
-new_wand <- function(model_obj, model_params_per_epoch, loss, validation_loss,
-                     best_epoch, validation_best_epoch, smooth_features,
-                     optimization_parameters, blueprint) {
-  # if (!inherits(model_obj, "raw")) {
-  #   rlang::abort("'model_obj' should be a raw vector.")
+new_wand <- function(model_obj,
+                     # model_params_per_epoch,
+                     loss,
+                     validation_loss,
+                     best_epoch,
+                     validation_best_epoch,
+                     best_model_params,
+                     validation_best_model_params,
+                     smooth_features,
+                     optimization_parameters,
+                     blueprint) {
+  if (!inherits(model_obj, "raw")) {
+    rlang::abort("'model_obj' should be a raw vector.")
+  }
+  # if (!is.list(model_params_per_epoch)) {
+  #   rlang::abort("'model_params_per_epoch' should be a list")
   # }
-  if (!is.list(model_params_per_epoch)) {
-    rlang::abort("'model_params_per_epoch' should be a list")
+  if (!is.list(best_model_params)) {
+    rlang::abort("'best_model_params' should be a list")
+  }
+  if (!is.list(validation_best_model_params)) {
+    rlang::abort("'validation_best_model_params' should be a list")
   }
   if (!is.vector(loss) || !is.numeric(loss)) {
     rlang::abort("'loss' should be a numeric vector")
@@ -31,11 +45,13 @@ new_wand <- function(model_obj, model_params_per_epoch, loss, validation_loss,
 
   hardhat::new_model(
     model_obj = model_obj,
-    model_params_per_epoch = model_params_per_epoch,
+    # model_params_per_epoch = model_params_per_epoch,
     loss = loss,
     validation_loss = validation_loss,
     best_epoch = best_epoch,
     validation_best_epoch = validation_best_epoch,
+    best_model_params = best_model_params,
+    validation_best_model_params = validation_best_model_params,
     smooth_features = smooth_features,
     optimization_parameters = optimization_parameters,
     blueprint = blueprint,

@@ -256,6 +256,7 @@ wand_bridge <- function(processed,
   if (is.numeric(epochs) & !is.integer(epochs)) {
     epochs <- as.integer(epochs)
   }
+  # TODO check all params
 
   # Make sure smooth features are named
   if (!missing(smooth_features) &&
@@ -285,11 +286,13 @@ wand_bridge <- function(processed,
   # Construct wand object
   new_wand(
     model_obj = fit$model_obj,
-    model_params_per_epoch = fit$model_params_per_epoch,
+    # model_params_per_epoch = fit$model_params_per_epoch,
     loss = fit$loss,
     validation_loss = fit$validation_loss,
     best_epoch = fit$best_epoch,
     validation_best_epoch = fit$validation_best_epoch,
+    best_model_params = fit$best_model_params,
+    validation_best_model_params = fit$validation_best_model_params,
     smooth_features = fit$smooth_features,
     optimization_parameters = fit$optimization_parameters,
     blueprint = processed$blueprint
@@ -356,7 +359,7 @@ wand_impl <- function(x, y,
   val_best_epoch <- 1L
   val_loss_vec <- rep(NA_real_, epochs)
   consec_iters_without_val_improvement <- 0
-  model_params_per_epoch <- list()
+  # model_params_per_epoch <- list()
   stopping_tolerance <- 5
 
   # Run training loop
@@ -388,10 +391,18 @@ wand_impl <- function(x, y,
       val_loss_vec[epoch] <- val_loss_current
     }
 
+    if (is.nan(loss_current) | is.nan(val_loss_current)) {
+      rlang::warn(paste0("The loss function has returned a nan,",
+                         "try normalizing data or lowering learning rate.",
+                         " Training will stop at this epoch."))
+      break()
+    }
+
     if (loss_current < loss_min) {
       loss_min <- loss_current
       best_epoch <- epoch
       consec_iters_without_improvement <- 0
+      best_model_params <- lapply(model$state_dict(), torch::as_array)
     } else {
       consec_iters_without_improvement <- consec_iters_without_improvement + 1
     }
@@ -400,9 +411,15 @@ wand_impl <- function(x, y,
       val_loss_min <- val_loss_current
       val_best_epoch <- val_best_epoch
       consec_iters_without_val_improvement <- 0
+      validation_best_model_params <- lapply(model$state_dict(), torch::as_array)
     } else {
       consec_iters_without_val_improvement <- consec_iters_without_val_improvement + 1
     }
+
+    # Save params for each epoch
+    # TODO Is this actually useful for users? What does glmnet do with weights like this?
+    # Allow users to save this as an arg?
+    # model_params_per_epoch[[epoch]] <- lapply(model$state_dict(), torch::as_array)
 
     # Update user
     msg <- paste0("epoch: ", epoch,
@@ -417,15 +434,28 @@ wand_impl <- function(x, y,
     }
   }
 
+  # Rather than saving the actual smooth module objects we'll just save the module's classname
+  if (!(missing(smooth_features))) {
+    for (i in 1:length(smooth_features)) {
+      smooth_features[[i]]$torch_module <- smooth_features[[i]]$torch_module$classname
+      # TODO should I convert the quosures to strings?
+      # smooth_features[[i]]$features <- sapply(smooth_features[[i]]$features, quo_name)
+    }
+  } else {
+    smooth_features <- list()
+  }
+
   # Return model
   list(
-    model_obj = list(),
-    model_params_per_epoch = list(),
+    model_obj = dehydrate_model(model),
+    # model_params_per_epoch = model_params_per_epoch,
     loss = loss_vec,
     validation_loss = val_loss_vec,
     best_epoch = best_epoch,
     validation_best_epoch = val_best_epoch,
-    smooth_features = list(),
+    best_model_params = best_model_params,
+    validation_best_model_params = validation_best_model_params,
+    smooth_features = smooth_features,
     optimization_parameters = list(epochs = epochs,
                                    learn_rate = learn_rate,
                                    batch_size = batch_size)
