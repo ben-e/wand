@@ -213,8 +213,10 @@ wand_bridge <- function(processed, smooth_specs,
 
   new_wand(
     model_obj = fit$model_obj,
-    smooth_specs = fit$smooth_specs,
     best_model_params = fit$best_model_params,
+    loss = fit$loss,
+    validation_loss = fit$validation_loss,
+    smooth_specs = fit$smooth_specs,
     training_params = fit$training_params,
     blueprint = processed$blueprint
   )
@@ -326,8 +328,10 @@ wand_impl <- function(predictors, outcome,
   # return
   list(
     model_obj = dehydrate_model(model),
-    smooth_specs = if (rlang::is_missing(smooth_specs)) list() else smooth_specs,
     best_model_params = best_model_params,
+    loss = loss_vec,
+    validation_loss = val_loss_vec,
+    smooth_specs = if (rlang::is_missing(smooth_specs)) list() else smooth_specs,
     training_params = list(batch_size = batch_size,
                            validation_prop = validation_prop,
                            epochs = epochs,
