@@ -41,10 +41,20 @@ valid_wand_predict_types <- function() {
 # Bridge
 
 predict_wand_bridge <- function(type, model, predictors) {
-  predictors <- as.matrix(predictors)
+  # Load data into a wand friendly dataset, no outcome or gradient required
+  wand_predictors <- build_wand_dataset(predictors,
+                                        smooth_specs = model$smooth_specs,
+                                        requires_grad = F)
+
+  # Rehydrate the model
+  model$model_obj <- hydrate_model(model$model_obj)
+
+  # Load model params into model and set eval mode
+  model$model_obj$load_state_dict(lapply(model$best_model_params, torch::torch_tensor))
+  model$model_obj$eval()
 
   predict_function <- get_wand_predict_function(type)
-  predictions <- predict_function(model, predictors)
+  predictions <- predict_function(model$model_obj, wand_predictors)
 
   hardhat::validate_prediction_size(predictions, predictors)
 
@@ -62,6 +72,10 @@ get_wand_predict_function <- function(type) {
 # Implementation
 
 predict_wand_numeric <- function(model, predictors) {
-  predictions <- rep(1L, times = nrow(predictors))
+  predictions <- model(predictors$tensors)
+  predictions <- as.array(predictions)[ , 1]
+  # convert NaN to NA
+  predictions[is.nan(predictions)] <- NA
+  # Return spruced predictions
   hardhat::spruce_numeric(predictions)
 }

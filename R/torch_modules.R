@@ -15,7 +15,8 @@ wand_mlp_module <- torch::nn_module(
     # hidden layers and output
     for (i in seq_along(hidden_units)[-1]) {
       layers[[length(layers) + 1]] <- torch::nn_linear(hidden_units[i - 1], hidden_units[i])
-      layers[[length(layers) + 1]] <- torch::nn_relu()
+      if (i < n_layers)
+        layers[[length(layers) + 1]] <- torch::nn_relu()
     }
 
     # model
@@ -72,7 +73,7 @@ wand_module <- torch::nn_module(
   "wand_module",
   initialize = function(n_linear_features, smooth_specs, mode, n_classes) {
     # Smooth modules
-    if (rlang::is_missing(smooth_specs)) {
+    if (rlang::is_missing(smooth_specs) || length(smooth_specs) == 0) {
       n_smooth_features <- 0
       self$smooth_modules <- torch::nn_module_list()
     } else {
@@ -105,7 +106,6 @@ wand_module <- torch::nn_module(
       lapply(seq_along(self$smooth_modules),
              \(i) self$smooth_modules[[i]](x[[self$smooth_module_names[i]]]))
     ), dim = 2)
-
     # pass through linear module
     self$linear_module(x_all)
   }

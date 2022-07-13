@@ -66,6 +66,8 @@ wand.data.frame <- function(x, y, smooth_specs,
                             validation_prop = 0.1,
                             # training
                             epochs = 10,
+                            learn_rate = 0.1,
+                            stop_iter = 5,
                             ...) {
   processed <- hardhat::mold(x, y)
   wand_bridge(
@@ -74,6 +76,8 @@ wand.data.frame <- function(x, y, smooth_specs,
     batch_size = batch_size,
     validation_prop = validation_prop,
     epochs = epochs,
+    learn_rate = learn_rate,
+    stop_iter = stop_iter,
     ...
   )
 }
@@ -88,6 +92,8 @@ wand.matrix <- function(x, y, smooth_specs,
                         validation_prop = 0.1,
                         # training
                         epochs = 10,
+                        learn_rate = 0.1,
+                        stop_iter = 5,
                         ...) {
   processed <- hardhat::mold(x, y)
   wand_bridge(
@@ -96,6 +102,8 @@ wand.matrix <- function(x, y, smooth_specs,
     batch_size = batch_size,
     validation_prop = validation_prop,
     epochs = epochs,
+    learn_rate = learn_rate,
+    stop_iter = stop_iter,
     ...
   )
 }
@@ -110,6 +118,8 @@ wand.formula <- function(formula, data,
                          validation_prop = 0.1,
                          # training
                          epochs = 10,
+                         learn_rate = 0.1,
+                         stop_iter = 5,
                          ...) {
   # Get smooth specs form the formula
   smooth_specs <- list()
@@ -138,6 +148,8 @@ wand.formula <- function(formula, data,
     batch_size = batch_size,
     validation_prop = validation_prop,
     epochs = epochs,
+    learn_rate = learn_rate,
+    stop_iter = stop_iter,
     ...
   )
 }
@@ -153,6 +165,8 @@ wand.recipe <- function(x, data,
                         validation_prop = 0.1,
                         # training
                         epochs = 10,
+                        learn_rate = 0.1,
+                        stop_iter = 5,
                         ...) {
   processed <- hardhat::mold(x, data)
   wand_bridge(
@@ -161,6 +175,8 @@ wand.recipe <- function(x, data,
     batch_size = batch_size,
     validation_prop = validation_prop,
     epochs = epochs,
+    learn_rate = learn_rate,
+    stop_iter = stop_iter,
     ...
   )
 }
@@ -174,11 +190,13 @@ wand_bridge <- function(processed, smooth_specs,
                         validation_prop,
                         # training
                         epochs,
+                        learn_rate = learn_rate,
+                        stop_iter = stop_iter,
                         ...) {
   predictors <- processed$predictors
   outcome <- processed$outcomes[[1]]
 
-  if (!rlang::is_missing(smooth_specs) && is.null(names(smooth_specs)))
+  if (!rlang::is_missing(smooth_specs) && is.null(names(smooth_specs)) && length(smooth_specs) > 0)
     names(smooth_specs) <- paste0("smooth_", 1:length(smooth_specs))
 
   fit <- wand_impl(
@@ -188,13 +206,16 @@ wand_bridge <- function(processed, smooth_specs,
     batch_size,
     validation_prop,
     # training
-    epochs
+    epochs,
+    learn_rate = learn_rate,
+    stop_iter = stop_iter
   )
 
   new_wand(
     model_obj = fit$model_obj,
     smooth_specs = fit$smooth_specs,
     best_model_params = fit$best_model_params,
+    training_params = fit$training_params,
     blueprint = processed$blueprint
   )
 }
@@ -209,7 +230,10 @@ wand_impl <- function(predictors, outcome,
                       batch_size,
                       validation_prop,
                       # training
-                      epochs) {
+                      epochs,
+                      learn_rate,
+                      stop_iter) {
+
   torch::torch_manual_seed(4242)
 
   # Build dataset and dataloader
@@ -227,10 +251,14 @@ wand_impl <- function(predictors, outcome,
   dl <- torch::dataloader(ds, batch_size = batch_size)
 
   # Initialize wand modules
-  model <- wand_module(ncol(ds$tensors$x_linear), smooth_specs, "regression")
+  if ("x_linear" %in% names(ds$tensors))
+    n_linear_features <- ncol(ds$tensors$x_linear)
+  else
+    n_linear_features <- 0
+  model <- wand_module(n_linear_features, smooth_specs, "regression")
 
   # Initialize optimizer
-  optimizer <- torch::optim_sgd(model$parameters, lr = 0.01)
+  optimizer <- torch::optim_sgd(model$parameters, lr = learn_rate)
 
   # Store results of the training loop
   loss_min <- 10^38
@@ -238,7 +266,6 @@ wand_impl <- function(predictors, outcome,
   val_loss_vec <- rep(NA_real_, epochs)
   val_loss_current <- NA
   loss_tol <- 5
-  stop_iter <- 5
   consec_iters_without_improvement <- 0
 
   # Iterate over epochs
@@ -298,8 +325,13 @@ wand_impl <- function(predictors, outcome,
 
   # return
   list(
-    model_obj = model,
+    model_obj = dehydrate_model(model),
     smooth_specs = if (rlang::is_missing(smooth_specs)) list() else smooth_specs,
-    best_model_params = 1
+    best_model_params = best_model_params,
+    training_params = list(batch_size = batch_size,
+                           validation_prop = validation_prop,
+                           epochs = epochs,
+                           learn_rate = learn_rate,
+                           stop_iter = stop_iter)
   )
 }
