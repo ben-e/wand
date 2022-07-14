@@ -6,13 +6,14 @@
 ### 0.1.0
 First implementation of {wand}, featuring data frame, formula, matrix, and recipe interfaces. The formula interface draws inspiration from {mgcv}, allowing users to specify smooth terms and smooth interactions via an `s` function. The other interfaces allow interactions between terms to be set via function arguments.
 
-- [ ] Implement base `wand` model fitting function.
-- [ ] Implement the model constructor and bridge functions.
-- [ ] Implement user facing interfaces.
-- [ ] Implement prediction methods.
-- [ ] Expand implementation to both regression and classification.
-- [ ] Add support for feature interactions, similar to {mgcv}'s `ti` and `te`.
+- [x] Implement base `wand` model fitting function.
+- [x] Implement the model constructor and bridge functions.
+- [x] Implement user facing interfaces.
+- [x] Implement prediction methods.
+- [x] Expand implementation to both regression and classification.
+- [x] Add support for feature interactions, similar to {mgcv}'s `ti` and `te`.
 - [ ] Add tests for each user interface
+- [ ] Document functions and add examples.
 
 ### 0.2.0
 Improves {tidymodels} compatibility by adding {dial} tunable model parameters, including tuning for smooth model terms. This will allow users more tuning potential than the current {parsnip} implementation of `gen_additive_mod` built on {mgcv}.
