@@ -33,7 +33,7 @@ build_wand_dataset <- function(x, y, smooth_specs, requires_grad = T) {
   # outcome
   # Note that we won't have an outcome when making predictions. As such, y is not a required arg.
   if(!rlang::is_missing(y)) {
-    ds_tensors[["y"]] <- torch::torch_tensor(as.vector(y), requires_grad = requires_grad)
+    ds_tensors[["y"]] <- torch::torch_tensor(as.vector(y))
   }
 
   # Create the tensor dataset from all tensors and return
