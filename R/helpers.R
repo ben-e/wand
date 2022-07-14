@@ -1,40 +1,43 @@
-#' Convert a matrix to a `wand` compatible `torch::dataset`.
-build_wand_dataset <- function(x, y, smooth_features, requires_grad = T) {
-  # Create dataset with linear features and outcome
-
-  # TODO This prevents users from doing something like including a feature as a smooth and linear
-  # term (might be useful when the user is specifying an interaction), the easiest workaround is
-  # for users to just wrap the linear feature in I, or to create their own duplicate column, but
-  # I should figure out a standardized approach.
-
-  if (!missing(smooth_features)) {
-    smooth_feature_names <- unlist(sapply(smooth_features,
-                                          \(x) sapply(x$features, \(y) rlang::quo_name(y))))
-    linear_feature_names <- setdiff(colnames(x), smooth_feature_names)
+# Builds a wand dataset where smoothed features are stored in separate tensors.
+build_wand_dataset <- function(x, y, smooth_specs, requires_grad = T) {
+  # Get the names of linear and to-be smoothed features
+  if(rlang::is_missing(smooth_specs)) {
+    smooth_features <- c()
   } else {
-    linear_feature_names <- names(x)
+    smooth_features <- sapply(smooth_specs, \(x) sapply(x$features, \(y) rlang::quo_name(y)))
+    smooth_features <- unlist(smooth_features)
+  }
+  linear_features <- setdiff(colnames(x), smooth_features)
+
+  # Create tensors to be added to the tensor dataset
+  ds_tensors <- list()
+
+  # Linear features
+  if (length(linear_features) > 0) {
+    ds_tensors[["x_linear"]] <- torch::torch_tensor(as.matrix(x[ , linear_features]),
+                                                    requires_grad = requires_grad)
   }
 
-  ds <- torch::tensor_dataset(
-    x_linear = torch::torch_tensor(as.matrix(dplyr::select(x, !!linear_feature_names)),
-                                   requires_grad = requires_grad),
-    # TODO support multidim y
-    y = torch::torch_tensor(as.vector(y),
-                            requires_grad = requires_grad)
-  )
-
-  # Add smooth feature tensors
-  if (!missing(smooth_features) && length(smooth_features) > 0) {
-    for (i in 1:length(smooth_features)) {
-      ds$tensors[[names(smooth_features)[i]]] <- torch::torch_tensor(
+  # to-be smoothed features
+  if (!rlang::is_missing(smooth_specs)) {
+    for (i in seq_along(smooth_specs)) {
+      ds_tensors[[names(smooth_specs)[i]]] <- torch::torch_tensor(
         # TODO This transmute is performing computations (e.g. log(x)) that should probably be
-        # done using mold/blueprints
-        as.matrix(dplyr::transmute(x, !!!smooth_features[[i]]$features)),
+        # done using mold/blueprints?
+        as.matrix(dplyr::transmute(x, !!!smooth_specs[[i]]$features)),
         requires_grad = requires_grad
       )
     }
   }
-  ds
+
+  # outcome
+  # Note that we won't have an outcome when making predictions. As such, y is not a required arg.
+  if(!rlang::is_missing(y)) {
+    ds_tensors[["y"]] <- torch::torch_tensor(as.vector(y))
+  }
+
+  # Create the tensor dataset from all tensors and return
+  torch::tensor_dataset(!!!ds_tensors)
 }
 
 #' Save models to raw objects.
@@ -50,11 +53,10 @@ dehydrate_model <- function(model) {
 
 #' Load models from raw objects.
 #'
-#' Also, directly from brulee.
+#' Also directly from brulee.
 hydrate_model <- function(model) {
   con <- rawConnection(model)
   on.exit({close(con)}, add = TRUE)
   module <- torch::torch_load(con)
   module
 }
-

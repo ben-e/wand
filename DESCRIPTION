@@ -15,6 +15,7 @@ Imports:
     hardhat,
     rlang,
     stats,
-    torch
+    torch,
+    utils
 Suggests: 
     recipes

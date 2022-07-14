@@ -1,59 +1,17 @@
-new_wand <- function(model_obj,
-                     # model_params_per_epoch,
-                     loss,
-                     validation_loss,
-                     best_epoch,
-                     validation_best_epoch,
-                     best_model_params,
-                     validation_best_model_params,
-                     smooth_features,
-                     optimization_parameters,
+new_wand <- function(model_obj, best_model_params,
+                     loss, validation_loss,
+                     smooth_specs, training_params,
+                     outcome_info, mode,
                      blueprint) {
-  if (!inherits(model_obj, "raw")) {
-    rlang::abort("'model_obj' should be a raw vector.")
-  }
-  # if (!is.list(model_params_per_epoch)) {
-  #   rlang::abort("'model_params_per_epoch' should be a list")
-  # }
-  if (!is.list(best_model_params)) {
-    rlang::abort("'best_model_params' should be a list")
-  }
-  if (!is.list(validation_best_model_params)) {
-    rlang::abort("'validation_best_model_params' should be a list")
-  }
-  if (!is.vector(loss) || !is.numeric(loss)) {
-    rlang::abort("'loss' should be a numeric vector")
-  }
-  if (!is.vector(validation_loss) || !is.numeric(validation_loss)) {
-    rlang::abort("'validation_loss' should be a numeric vector")
-  }
-  if (!is.vector(best_epoch) || !is.integer(best_epoch)) {
-    rlang::abort("'best_epoch' should be an integer")
-  }
-  if (!is.vector(validation_best_epoch) || !is.integer(validation_best_epoch)) {
-    rlang::abort("'validation_best_epoch' should be an integer")
-  }
-  if (!is.list(smooth_features)) {
-    rlang::abort("'smooth_features' should be a list")
-  }
-  if (!is.list(optimization_parameters)) {
-    rlang::abort("'optimization_parameters' should be a list")
-  }
-  if (!inherits(blueprint, "hardhat_blueprint")) {
-    rlang::abort("'blueprint' should be a hardhat blueprint")
-  }
-
   hardhat::new_model(
     model_obj = model_obj,
-    # model_params_per_epoch = model_params_per_epoch,
+    best_model_params = best_model_params,
     loss = loss,
     validation_loss = validation_loss,
-    best_epoch = best_epoch,
-    validation_best_epoch = validation_best_epoch,
-    best_model_params = best_model_params,
-    validation_best_model_params = validation_best_model_params,
-    smooth_features = smooth_features,
-    optimization_parameters = optimization_parameters,
+    smooth_specs = smooth_specs,
+    training_params = training_params,
+    outcome_info = outcome_info,
+    mode = mode,
     blueprint = blueprint,
     class = "wand"
   )

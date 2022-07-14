@@ -27,24 +27,42 @@
 #' predict(mod, test)
 #'
 #' @export
-predict.wand <- function(object, new_data, type = "numeric", ...) {
+predict.wand <- function(object, new_data, type = NULL, ...) {
   forged <- hardhat::forge(new_data, object$blueprint)
+
+  if (is.null(type)) {
+    if (object$mode == "regression")
+      type <- "numeric"
+    else if (object$mode == "classification")
+      type <- "class"
+  }
+
   rlang::arg_match(type, valid_wand_predict_types())
   predict_wand_bridge(type, object, forged$predictors)
 }
 
 valid_wand_predict_types <- function() {
-  c("numeric")
+  c("numeric", "class", "prob")
 }
 
-# ------------------------------------------------------------------------------
+# --------------------------------------------------------------------------------------------------
 # Bridge
 
 predict_wand_bridge <- function(type, model, predictors) {
-  predictors <- as.matrix(predictors)
+  # Load data into a wand friendly dataset, no outcome or gradient required
+  wand_predictors <- build_wand_dataset(predictors,
+                                        smooth_specs = model$smooth_specs,
+                                        requires_grad = F)
+
+  # Rehydrate the model
+  model$model_obj <- hydrate_model(model$model_obj)
+
+  # Load model params into model and set eval mode
+  model$model_obj$load_state_dict(lapply(model$best_model_params, torch::torch_tensor))
+  model$model_obj$eval()
 
   predict_function <- get_wand_predict_function(type)
-  predictions <- predict_function(model, predictors)
+  predictions <- predict_function(model$model_obj, wand_predictors, model$outcome_info$classes)
 
   hardhat::validate_prediction_size(predictions, predictors)
 
@@ -54,14 +72,36 @@ predict_wand_bridge <- function(type, model, predictors) {
 get_wand_predict_function <- function(type) {
   switch(
     type,
-    numeric = predict_wand_numeric
+    numeric = predict_wand_numeric,
+    prob = predict_wand_prob,
+    class = predict_wand_class
   )
 }
 
-# ------------------------------------------------------------------------------
+# --------------------------------------------------------------------------------------------------
 # Implementation
 
-predict_wand_numeric <- function(model, predictors) {
-  predictions <- rep(1L, times = nrow(predictors))
+predict_wand_numeric <- function(model, predictors, levels = NULL) {
+  predictions <- model(predictors$tensors)
+  predictions <- as.array(predictions)[ , 1]
+  # convert NaN to NA
+  predictions[is.nan(predictions)] <- NA
+  # Return spruced predictions
   hardhat::spruce_numeric(predictions)
+}
+
+predict_wand_prob <- function(model, predictors, levels) {
+  predictions <- model(predictors$tensors)
+  predictions <- as.array(predictions)
+  predictions[is.nan(predictions)] <- NA
+  hardhat::spruce_prob(pred_levels = levels, predictions)
+}
+
+predict_wand_class <- function(model, predictors, levels) {
+  predictions <- model(predictors$tensors)
+  predictions <- as.array(predictions)
+  predictions[is.nan(predictions)] <- NA
+  predictions <- apply(predictions, 1,
+                       \(x) if (any(is.na(x))) NA else which.max(x))
+  hardhat::spruce_class(factor(levels[predictions], levels = levels))
 }
