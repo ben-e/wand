@@ -3,7 +3,7 @@
 
 ## Roadmap
 
-### 0.1.0
+### 0.0.1
 First implementation of {wand}, featuring data frame, formula, matrix, and recipe interfaces. The formula interface draws inspiration from {mgcv}, allowing users to specify smooth terms and smooth interactions via an `s` function. The other interfaces allow interactions between terms to be set via function arguments.
 
 - [x] Implement base `wand` model fitting function.
@@ -13,16 +13,16 @@ First implementation of {wand}, featuring data frame, formula, matrix, and recip
 - [x] Expand implementation to both regression and classification.
 - [x] Add support for feature interactions, similar to {mgcv}'s `ti` and `te`.
 - [ ] Add tests for each user interface
-- [ ] Document functions and add examples.
+- [x] Document functions and add examples.
 
-### 0.2.0
+### 0.0.2
 Improves {tidymodels} compatibility by adding {dial} tunable model parameters, including tuning for smooth model terms. This will allow users more tuning potential than the current {parsnip} implementation of `gen_additive_mod` built on {mgcv}.
 
 - [ ] Add tunable parameters for model optimization.
 - [ ] Add tunable parameters for output layer regularization.
 - [ ] Allow specified models to be "compiled" such that parameters for all smooths are tunable in the {tidymodels} framework, similar to the [skorch](https://github.com/skorch-dev/skorch) Python package's interface between PyTorch and scikit-learn.
 
-### 0.3.0
+### 0.0.3
 Focuses on model explainability by adding `coef`, `summary`, and `plot` functions which mirror the functionality of the same funcitons in {mgcv}, as well as compatibility with the {ggeffects} and {marginaleffects} packages.
 
 - [ ] Implement `coef`.
@@ -31,7 +31,7 @@ Focuses on model explainability by adding `coef`, `summary`, and `plot` function
 - [ ] PR for  {ggeffects} support.
 - [ ] PR for  {marginaleffects} support.
 
-### 0.4.0
+### 0.0.4
 Expands documentation, adding a project website and vignettes.
 
 - [ ] Design hex.
