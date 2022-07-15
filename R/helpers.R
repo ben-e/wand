@@ -1,4 +1,12 @@
-# Builds a wand dataset where smoothed features are stored in separate tensors.
+#' Builds `wand` compatible `torch::tensor_dataset`s
+#'
+#' @param x The predictors as an R __dataframe__ or __matrix__, must include the features used in
+#'   the `smooth_specs` specifications.
+#' @param y The model target as an R __vector__.
+#' @param smooth_specs A named list of smooth specifications.
+#' @param requires_grad A boolean indicating whether or not the `x` tensors will need gradients.
+#'   This can be turned off for datasets that are only used for evaluation, e.g. validation data.
+#'
 build_wand_dataset <- function(x, y, smooth_specs, requires_grad = T) {
   # Get the names of linear and to-be smoothed features
   if(rlang::is_missing(smooth_specs)) {
@@ -40,9 +48,14 @@ build_wand_dataset <- function(x, y, smooth_specs, requires_grad = T) {
   torch::tensor_dataset(!!!ds_tensors)
 }
 
-#' Save models to raw objects.
+#' Store a `torch` module as a raw R object
 #'
-#' Directly from brulee.
+#' This function is used to store `torch` modules, usually after training, as raw R objects. This
+#' function comes directly from the `brulee` package.
+#'
+#' @param model A `torch` module.
+#'
+#' @return A raw object.
 dehydrate_model <- function(model) {
   con <- rawConnection(raw(), open = "w")
   on.exit({close(con)}, add = TRUE)
@@ -53,7 +66,12 @@ dehydrate_model <- function(model) {
 
 #' Load models from raw objects.
 #'
-#' Also directly from brulee.
+#' This function is used to restore dehydrated `torch` modules from raw R objects. This function
+#' comes directly from the `brulee` package.
+#'
+#' @param model A raw object representing a `torch` module.
+#'
+#' @return A `torch` module.
 hydrate_model <- function(model) {
   con <- rawConnection(model)
   on.exit({close(con)}, add = TRUE)

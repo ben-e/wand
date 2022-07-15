@@ -3,7 +3,8 @@ Title: Fit Wide and Deep Neural Networks
 Version: 0.0.1
 Authors@R: 
     person("Ben", "Ewing", , "ben.j.ewing@protonmail.com", role = c("aut", "cre"))
-Description: TODO
+Description: Provides functions for fitting and examining wide and deep neural networks in a 
+  {tidymodels} friednly framework. Powered by {torch}.
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)

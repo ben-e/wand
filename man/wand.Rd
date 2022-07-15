@@ -7,7 +7,7 @@
 \alias{wand.matrix}
 \alias{wand.formula}
 \alias{wand.recipe}
-\title{Fit a \code{wand} model.}
+\title{Fit a \code{wand} model}
 \usage{
 wand(x, ...)
 
@@ -123,19 +123,21 @@ as linear, and the deep parts of the network uses neural network submodules to s
 TODO :)
 }
 \examples{
+\donttest{
 predictors <- mtcars[, -1]
 outcome <- mtcars[, 1]
 
 # XY interface
-mod <- wand(predictors, outcome)
+mod <- wand(predictors, outcome, smooth_specs = list(hp = s_mlp(hp)))
 
 # Formula interface
-mod2 <- wand(mpg ~ ., mtcars)
+mod2 <- wand(mpg ~ s_mlp(hp) + disp, mtcars)
 
 # Recipes interface
 library(recipes)
 rec <- recipe(mpg ~ ., mtcars)
 rec <- step_log(rec, disp)
-mod3 <- wand(rec, mtcars)
+mod3 <- wand(rec, mtcars, smooth_specs = list(hp = s_mlp(hp)))
+}
 
 }

@@ -1,4 +1,4 @@
-#' Fit a `wand` model.
+#' Fit a `wand` model
 #'
 #' `wand()` fits a wide and deep neural network, where the wide part of the network treats features
 #' as linear, and the deep parts of the network uses neural network submodules to smooth features.
@@ -46,20 +46,22 @@
 #' @details TODO :)
 #'
 #' @examples
+#' \donttest{
 #' predictors <- mtcars[, -1]
 #' outcome <- mtcars[, 1]
 #'
 #' # XY interface
-#' mod <- wand(predictors, outcome)
+#' mod <- wand(predictors, outcome, smooth_specs = list(hp = s_mlp(hp)))
 #'
 #' # Formula interface
-#' mod2 <- wand(mpg ~ ., mtcars)
+#' mod2 <- wand(mpg ~ s_mlp(hp) + disp, mtcars)
 #'
 #' # Recipes interface
 #' library(recipes)
 #' rec <- recipe(mpg ~ ., mtcars)
 #' rec <- step_log(rec, disp)
-#' mod3 <- wand(rec, mtcars)
+#' mod3 <- wand(rec, mtcars, smooth_specs = list(hp = s_mlp(hp)))
+#'}
 #'
 #' @export
 wand <- function(x, ...) {
@@ -147,7 +149,7 @@ wand.formula <- function(formula, data,
                          ...) {
   # Get smooth specs form the formula
   smooth_specs <- list()
-  for (term in attr(terms(formula), "term.labels")) {
+  for (term in attr(stats::terms(formula, data = data), "term.labels")) {
     # TODO I don't like that this assumes/requires that smoothers start with s_, perhaps
     # use a registry of smoothers?
     if (grepl("^s_", term)) {
@@ -155,7 +157,7 @@ wand.formula <- function(formula, data,
       smooth_specs[[length(smooth_specs) + 1]] <- eval(parse(text = term))
       # update formula
       # TODO I think this should be done using a blueprint, but I'm having trouble with those.
-      formula <- update(
+      formula <- stats::update(
         formula,
         paste0(". ~ . - ", term,
                " + ",  paste0(sapply(smooth_specs[[length(smooth_specs)]]$features,
@@ -288,7 +290,7 @@ wand_impl <- function(predictors, outcome,
   } else {
     mode <- "regression"
     n_classes <- NULL
-    outcome_info <- list(mean = mean(outcome), sd = sd(outcome))
+    outcome_info <- list(mean = mean(outcome), sd = stats::sd(outcome))
   }
 
   if (verbose) {

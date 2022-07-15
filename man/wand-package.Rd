@@ -2,11 +2,11 @@
 % Please edit documentation in R/wand-package.R
 \docType{package}
 \name{wand-package}
-\alias{wand}
 \alias{wand-package}
+\alias{_PACKAGE}
 \title{wand: Fit Wide and Deep Neural Networks}
 \description{
-TODO
+Provides functions for fitting and examining wide and deep neural networks in a {tidymodels} friednly framework. Powered by {torch}.
 }
 \author{
 \strong{Maintainer}: Ben Ewing \email{ben.j.ewing@protonmail.com}

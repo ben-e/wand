@@ -1,4 +1,5 @@
 #' @keywords internal
+#' @aliases wand-package
 "_PACKAGE"
 
 ## usethis namespace: start

@@ -6,6 +6,13 @@
 \usage{
 hydrate_model(model)
 }
+\arguments{
+\item{model}{A raw object representing a \code{torch} module.}
+}
+\value{
+A \code{torch} module.
+}
 \description{
-Also directly from brulee.
+This function is used to restore dehydrated \code{torch} modules from raw R objects. This function
+comes directly from the \code{brulee} package.
 }

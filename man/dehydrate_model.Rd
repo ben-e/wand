@@ -2,10 +2,17 @@
 % Please edit documentation in R/helpers.R
 \name{dehydrate_model}
 \alias{dehydrate_model}
-\title{Save models to raw objects.}
+\title{Store a \code{torch} module as a raw R object}
 \usage{
 dehydrate_model(model)
 }
+\arguments{
+\item{model}{A \code{torch} module.}
+}
+\value{
+A raw object.
+}
 \description{
-Directly from brulee.
+This function is used to store \code{torch} modules, usually after training, as raw R objects. This
+function comes directly from the \code{brulee} package.
 }

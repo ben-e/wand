@@ -8,6 +8,8 @@
 #' Valid options are:
 #'
 #' - `"numeric"` for numeric predictions.
+#' - `"class"` for hard class predictions.
+#' - `"prob"` for soft class probability predictions.
 #'
 #' @param ... Not used, but required for extensibility.
 #'
@@ -17,6 +19,7 @@
 #' to be the same as the number of rows in `new_data`.
 #'
 #' @examples
+#' \donttest{
 #' train <- mtcars[1:20,]
 #' test <- mtcars[21:32, -1]
 #'
@@ -25,6 +28,7 @@
 #'
 #' # Predict, with preprocessing
 #' predict(mod, test)
+#' }
 #'
 #' @export
 predict.wand <- function(object, new_data, type = NULL, ...) {

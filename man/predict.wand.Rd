@@ -15,6 +15,8 @@
 Valid options are:
 \itemize{
 \item \code{"numeric"} for numeric predictions.
+\item \code{"class"} for hard class predictions.
+\item \code{"prob"} for soft class probability predictions.
 }}
 
 \item{...}{Not used, but required for extensibility.}
@@ -27,6 +29,7 @@ to be the same as the number of rows in \code{new_data}.
 Predict from a \code{wand}
 }
 \examples{
+\donttest{
 train <- mtcars[1:20,]
 test <- mtcars[21:32, -1]
 
@@ -35,5 +38,6 @@ mod <- wand(mpg ~ cyl + log(drat), train)
 
 # Predict, with preprocessing
 predict(mod, test)
+}
 
 }

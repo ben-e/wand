@@ -1,6 +1,20 @@
 # Smooth modules -----------------------------------------------------------------------------------
 # Smooth modules are wrapped by s_ functions which are meant to be user-facing.
 
+#' A multilayer perceptron `torch::nn_module` module
+#'
+#' @param n_features An integer giving the number of input features.
+#' @param hidden_units An integer vector giving the size of each layer. The final element gives the
+#'   number of features returned by the module.
+#'
+#' @details
+#'
+#' This module creates a very simple multilayer perceptron (mlp). The mlp uses the `torch::nn_relu`
+#' activation function, no dropout, and no batchnormalization. Note that the activation function is
+#' applied to the returned features.
+#'
+#' @return A multilayer perceptron `torch::nn_module` module
+#'
 #' @export
 wand_mlp_module <- torch::nn_module(
   "wand_mlp_module",
@@ -28,6 +42,23 @@ wand_mlp_module <- torch::nn_module(
   }
 )
 
+#' Specify a smooth function using a multilayer perceptron
+#'
+#' This function specifies a smooth function using a multilayer perceptron (mlp). Note that this
+#' function does not do the actual smoothing, it merely specifies the features to be smoothed,
+#' the `torch::nn_module` module to be used to do the smoothing, in this case an MLP, and the
+#' parameters needed to initialize that module.
+#'
+#' @param ... The unquoted variables to be smoothed.
+#' @param hidden_units An integer vector specifying the number of hidden units in each layer of the
+#'   mlp. Note that `length(hidden_units)` is the number of layers in the mlp; the final entry in
+#'   `hidden_units` represents the output of this smoother.
+#'
+#' @return
+#'
+#' A named list containing the features to be smoothed, the torch module doing the smoothing,
+#' the parameters needed to initialize that module, and the number of features returned by the mlp.
+#'
 #' @export
 s_mlp <- function(..., hidden_units = c(32, 32, 32)) {
   features <- rlang::enquos(...)
@@ -37,13 +68,23 @@ s_mlp <- function(..., hidden_units = c(32, 32, 32)) {
     torch_module = wand_mlp_module,
     torch_module_parameters = list(n_features = length(features),
                                    hidden_units = hidden_units),
-    n_smooth_features = tail(hidden_units, 1)
+    n_smooth_features = utils::tail(hidden_units, 1)
   )
 }
+
+#' TODO should s_ functions be an S3 class?
+#' TODO what about an s_ constructor function?
 
 # Output modules -----------------------------------------------------------------------------------
 # These modules take all linear and smooth features and generate output.
 
+#' A linear regression `torch::nn_module` module
+#'
+#' This module takes in `n_features` and returns a single feature, with no activation.
+#'
+#' @param n_features An integer giving the number of input features. Used to initialize the module.
+#'
+#' @return A `torch::nn_module` module which returns a single feature with no activation.
 wand_regression_module <- torch::nn_module(
   "wand_regression_module",
   initialize = function(n_features) {
@@ -54,6 +95,16 @@ wand_regression_module <- torch::nn_module(
   }
 )
 
+#' A linear regression `torch::nn_module` module for classification
+#'
+#' This module takes in `n_features` and returns `n_classes` values using a `torch::nn_softmax`
+#' activation.
+#'
+#' @param n_features An integer giving the number of input features. Used to initialize the module.
+#' @param n_classes An integer giving the number of output classes Used to initialize the module.
+#'
+#' @return A `torch::nn_module` module which returns a returns `n_classes` values using a
+#'   `torch::nn_softmax` activation.
 wand_classification_module <- torch::nn_module(
   "wand_classification_module",
   initialize = function(n_features, n_classes) {
@@ -70,6 +121,17 @@ wand_classification_module <- torch::nn_module(
 # wand module --------------------------------------------------------------------------------------
 # The wand module acts as a container for the smoothing and output modules.
 
+#' A `torch::nn_module` module used to fit wide and deep neural networks
+#'
+#' This module is not meant to be used directly by users. It makes many assumptions about inputs,
+#' and is used as the main engine of the `wand` package.
+#'
+#' @param n_linear_features An integer giving the number of linear features.
+#' @param smooth_specs A named list of smooth specifications, e.g. `s_mlp`.
+#' @param mode A string giving the model's goal: "classification" or "regression".
+#' @param n_classes An integer giving the number of classes, required when
+#'   `mode == "classification"`.
+#'
 wand_module <- torch::nn_module(
   "wand_module",
   initialize = function(n_linear_features, smooth_specs, mode, n_classes) {
