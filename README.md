@@ -43,10 +43,10 @@ Expands documentation, adding a project website and vignettes.
 
 The ideas underpinning this package are not wholly original, in particular this package draws from:
 
-* The original [Wide & Deep Learning for Recommender Systems](https://arxiv.org/abs/1606.07792) paper and described in.
+* The original [Wide & Deep Learning for Recommender Systems](https://arxiv.org/abs/1606.07792) paper.
 * The formula interface and model specification options available in {mgcv}.
 * The interface between the {torch} package and {tidymodels} used by the {brulee} package.
 
 During the creation of this package, I have also stumbled on a few related packages:
 
-* The [PySDDR](https://github.com/HelmholtzAI-Consultants-Munich/PySDDR) also implements the wide and deep ideas, but provides a comprehensive interface capable of implementing many types of deep models and can train distributional regressions (e.g. Poisson regression).
+* The [PySDDR](https://github.com/HelmholtzAI-Consultants-Munich/PySDDR) also implements the wide and deep idea, but provides a comprehensive interface capable of implementing many types of deep models and can train distributional regressions (e.g. Poisson regression).
