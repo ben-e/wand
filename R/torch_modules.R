@@ -1,6 +1,7 @@
 # Smooth modules -----------------------------------------------------------------------------------
 # Smooth modules are wrapped by s_ functions which are meant to be user-facing.
 
+#' @export
 wand_mlp_module <- torch::nn_module(
   "wand_mlp_module",
   initialize = function(n_features, hidden_units) {

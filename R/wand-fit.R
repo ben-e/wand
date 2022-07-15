@@ -1,6 +1,7 @@
-#' Fit a `wand`
+#' Fit a `wand` model.
 #'
-#' `wand()` fits a model.
+#' `wand()` fits a wide and deep neural network, where the wide part of the network treats features
+#' as linear, and the deep parts of the network uses neural network submodules to smooth features.
 #'
 #' @param x Depending on the context:
 #'
@@ -22,12 +23,27 @@
 #'
 #' @param formula A formula specifying the outcome terms on the left-hand side,
 #' and the predictor terms on the right-hand side.
-#'
+#' @param smooth_specs A named list of smooth specifications. A specification is simply the output
+#'   oaf `s_` functions like `s_mlp`. If the list is not named, or if a __formula__ is used, the
+#'   smooths will be named sequentially. When using a __formula__ the smooths are specified directly
+#'   as part of the formula.
+#' @param batch_size An integer giving the number of training samples included in each minibatch.
+#' @param validation_prop The proportion of training samples assigned to the validation set.
+#' @param epochs An integer giving the number of training epochs.
+#' @param learn_rate The initial learning rate used by the optimizer.
+#' @param stop_iter A non-negative integer giving the number of epochs with no improvement in loss
+#'   before training is stopped. If `validation_prop > 0` then validation loss is used, otherwise
+#'   loss is evaluated using the whole training set. Set this parameter to `Inf` to prevent any
+#'   early stopping.
+#' @param verbose A logical. When `TRUE` the loss, and validation loss if relevant, will be printed
+#'   out for each epoch, along with other training messages.
 #' @param ... Not currently used, but required for extensibility.
 #'
 #' @return
 #'
 #' A `wand` object.
+#'
+#' @details TODO :)
 #'
 #' @examples
 #' predictors <- mtcars[, -1]

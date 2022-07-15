@@ -7,7 +7,7 @@
 \alias{wand.matrix}
 \alias{wand.formula}
 \alias{wand.recipe}
-\title{Fit a \code{wand}}
+\title{Fit a \code{wand} model.}
 \usage{
 wand(x, ...)
 
@@ -20,6 +20,9 @@ wand(x, ...)
   batch_size = 32,
   validation_prop = 0.1,
   epochs = 10,
+  learn_rate = 3e-04,
+  stop_iter = 5,
+  verbose = F,
   ...
 )
 
@@ -30,10 +33,23 @@ wand(x, ...)
   batch_size = 32,
   validation_prop = 0.1,
   epochs = 10,
+  learn_rate = 3e-04,
+  stop_iter = 5,
+  verbose = F,
   ...
 )
 
-\method{wand}{formula}(formula, data, batch_size = 32, validation_prop = 0.1, epochs = 10, ...)
+\method{wand}{formula}(
+  formula,
+  data,
+  batch_size = 32,
+  validation_prop = 0.1,
+  epochs = 10,
+  learn_rate = 3e-04,
+  stop_iter = 5,
+  verbose = F,
+  ...
+)
 
 \method{wand}{recipe}(
   x,
@@ -42,6 +58,9 @@ wand(x, ...)
   batch_size = 32,
   validation_prop = 0.1,
   epochs = 10,
+  learn_rate = 3e-04,
+  stop_iter = 5,
+  verbose = F,
   ...
 )
 }
@@ -64,6 +83,27 @@ specified as:
 \item A numeric \strong{vector}.
 }}
 
+\item{smooth_specs}{A named list of smooth specifications. A specification is simply the output
+oaf \code{s_} functions like \code{s_mlp}. If the list is not named, or if a \strong{formula} is used, the
+smooths will be named sequentially. When using a \strong{formula} the smooths are specified directly
+as part of the formula.}
+
+\item{batch_size}{An integer giving the number of training samples included in each minibatch.}
+
+\item{validation_prop}{The proportion of training samples assigned to the validation set.}
+
+\item{epochs}{An integer giving the number of training epochs.}
+
+\item{learn_rate}{The initial learning rate used by the optimizer.}
+
+\item{stop_iter}{A non-negative integer giving the number of epochs with no improvement in loss
+before training is stopped. If \code{validation_prop > 0} then validation loss is used, otherwise
+loss is evaluated using the whole training set. Set this parameter to \code{Inf} to prevent any
+early stopping.}
+
+\item{verbose}{A logical. When \code{TRUE} the loss, and validation loss if relevant, will be printed
+out for each epoch, along with other training messages.}
+
 \item{formula}{A formula specifying the outcome terms on the left-hand side,
 and the predictor terms on the right-hand side.}
 
@@ -76,7 +116,11 @@ and the predictor terms on the right-hand side.}
 A \code{wand} object.
 }
 \description{
-\code{wand()} fits a model.
+\code{wand()} fits a wide and deep neural network, where the wide part of the network treats features
+as linear, and the deep parts of the network uses neural network submodules to smooth features.
+}
+\details{
+TODO :)
 }
 \examples{
 predictors <- mtcars[, -1]

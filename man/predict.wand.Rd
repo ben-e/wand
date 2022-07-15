@@ -4,7 +4,7 @@
 \alias{predict.wand}
 \title{Predict from a \code{wand}}
 \usage{
-\method{predict}{wand}(object, new_data, type = "numeric", ...)
+\method{predict}{wand}(object, new_data, type = NULL, ...)
 }
 \arguments{
 \item{object}{A \code{wand} object.}

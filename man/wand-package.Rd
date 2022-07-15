@@ -4,12 +4,12 @@
 \name{wand-package}
 \alias{wand}
 \alias{wand-package}
-\title{wand: What the Package Does (One Line, Title Case)}
+\title{wand: Fit Wide and Deep Neural Networks}
 \description{
-What the package does (one paragraph).
+TODO
 }
 \author{
-\strong{Maintainer}: First Last \email{first.last@example.com} (\href{https://orcid.org/YOUR-ORCID-ID}{ORCID})
+\strong{Maintainer}: Ben Ewing \email{ben.j.ewing@protonmail.com}
 
 }
 \keyword{internal}
