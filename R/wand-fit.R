@@ -47,22 +47,23 @@
 #'
 #' @examples
 #' \donttest{
-#' predictors <- mtcars[, -1]
-#' outcome <- mtcars[, 1]
+#' if (torch::torch_is_installed()) {
+#'   predictors <- mtcars[, -1]
+#'   outcome <- mtcars[, 1]
 #'
-#' # XY interface
-#' mod <- wand(predictors, outcome, smooth_specs = list(hp = s_mlp(hp)))
+#'   # XY interface
+#'   mod <- wand(predictors, outcome, smooth_specs = list(hp = s_mlp(hp)))
 #'
-#' # Formula interface
-#' mod2 <- wand(mpg ~ s_mlp(hp) + disp, mtcars)
+#'   # Formula interface
+#'   mod2 <- wand(mpg ~ s_mlp(hp) + disp, mtcars)
 #'
-#' # Recipes interface
-#' library(recipes)
-#' rec <- recipe(mpg ~ ., mtcars)
-#' rec <- step_log(rec, disp)
-#' mod3 <- wand(rec, mtcars, smooth_specs = list(hp = s_mlp(hp)))
-#'}
-#'
+#'   # Recipes interface
+#'   library(recipes)
+#'   rec <- recipe(mpg ~ ., mtcars)
+#'   rec <- step_log(rec, disp)
+#'   mod3 <- wand(rec, mtcars, smooth_specs = list(hp = s_mlp(hp)))
+#' }
+#' }
 #' @export
 wand <- function(x, ...) {
   UseMethod("wand")

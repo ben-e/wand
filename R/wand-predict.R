@@ -20,14 +20,16 @@
 #'
 #' @examples
 #' \donttest{
-#' train <- mtcars[1:20,]
-#' test <- mtcars[21:32, -1]
+#' if (torch::torch_is_installed()) {
+#'   train <- mtcars[1:20,]
+#'   test <- mtcars[21:32, -1]
 #'
-#' # Fit
-#' mod <- wand(mpg ~ cyl + log(drat), train)
+#'   # Fit
+#'   mod <- wand(mpg ~ cyl + log(drat), train)
 #'
-#' # Predict, with preprocessing
-#' predict(mod, test)
+#'   # Predict, with preprocessing
+#'   predict(mod, test)
+#' }
 #' }
 #'
 #' @export
