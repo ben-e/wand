@@ -1,4 +1,8 @@
 # wand
+
+[![R-CMD-check](https://github.com/ben-e/wand/workflows/R-CMD-check/badge.svg)](https://github.com/ben-e/wand/actions)
+[![Codecov test coverage](https://codecov.io/gh/tidymodels/brulee/branch/main/graph/badge.svg)](https://app.codecov.io/gh/tidymodels/brulee?branch=main)
+
 {wand} is a forthcoming R package which implements wide and deep neural networks, a type of generalized additive model, with a focus on model interpretability and compatibility with the {tidymodels} ecosystem. {wand} draws heavy inspiration from the {mgcv} and {brulee} packages.
 
 ## Roadmap
