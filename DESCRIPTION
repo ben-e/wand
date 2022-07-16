@@ -18,4 +18,6 @@ Imports:
     torch,
     utils
 Suggests: 
-    recipes
+    recipes,
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3
