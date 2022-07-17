@@ -306,12 +306,13 @@ wand_impl <- function(predictors, outcome,
 
     predictors <- predictors[-in_val, , drop = FALSE]
     outcome <- outcome[-in_val]
+
+    # Build val dataset
+    ds_val <- build_wand_dataset(predictors_val, outcome_val, smooth_specs, requires_grad = T)
   }
 
-
-  # Build datasets and dataloader
+  # Build dataset and dataloader
   ds <- build_wand_dataset(predictors, outcome, smooth_specs, requires_grad = T)
-  ds_val <- build_wand_dataset(predictors_val, outcome_val, smooth_specs, requires_grad = T)
   dl <- torch::dataloader(ds, batch_size = batch_size)
 
   # Initialize wand modules
