@@ -1,4 +1,6 @@
 library(testthat)
 library(wand)
 
-test_check("wand")
+if (torch::torch_is_installed()) {
+  test_check("wand")
+}
