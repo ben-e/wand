@@ -91,6 +91,7 @@ wand.data.frame <- function(x, y, smooth_specs,
                             verbose = F,
                             ...) {
   processed <- hardhat::mold(x, y)
+
   wand_bridge(
     processed,
     smooth_specs,
@@ -290,8 +291,10 @@ wand_impl <- function(predictors, outcome,
     outcome <- as.integer(outcome)
   } else {
     mode <- "regression"
+
     n_classes <- NULL
-    outcome_info <- list(mean = mean(outcome), sd = stats::sd(outcome))
+
+    outcome <- as.double(outcome)
   }
 
   if (verbose) {
@@ -307,8 +310,20 @@ wand_impl <- function(predictors, outcome,
     predictors <- predictors[-in_val, , drop = FALSE]
     outcome <- outcome[-in_val]
 
+    # scale the outcome
+    if (mode == "regression") {
+      outcome_info <- list(mean = mean(outcome), sd = stats::sd(outcome))
+      outcome <- scale_y(outcome, outcome_info)
+      outcome_val <- scale_y(outcome_val, outcome_info)
+    }
+
     # Build val dataset
     ds_val <- build_wand_dataset(predictors_val, outcome_val, smooth_specs, requires_grad = T)
+  } else {
+    if (mode == "regression") {
+      outcome_info <- list(mean = mean(outcome), sd = stats::sd(outcome))
+      outcome <- scale_y(outcome, outcome_info)
+    }
   }
 
   # Build dataset and dataloader

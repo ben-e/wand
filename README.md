@@ -16,7 +16,7 @@ First implementation of {wand}, featuring data frame, formula, matrix, and recip
 - [x] Implement prediction methods.
 - [x] Expand implementation to both regression and classification.
 - [x] Add support for feature interactions, similar to {mgcv}'s `ti` and `te`.
-- [ ] Add tests for each user interface
+- [x] Add tests for each user interface
 - [x] Document functions and add examples.
 
 ### 0.0.2

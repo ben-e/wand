@@ -1,5 +1,3 @@
-context("torch-modules")
-
 test_that("the wand_mlp_module returns the correct number of layers", {
   skip_if(!torch::torch_is_installed())
 

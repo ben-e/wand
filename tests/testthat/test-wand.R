@@ -1,5 +1,3 @@
-context("wand")
-
 suppressPackageStartupMessages(library(recipes))
 
 test_that("wand.default throws an error", {
@@ -146,3 +144,23 @@ test_that("wand class predictions are factors", {
     is.factor(predict(mod, mtcars[ , -11])$.pred_class)
   })
 })
+
+test_that("wand fits with integer and double outcomes", {
+  skip_if(!torch::torch_is_installed())
+
+  # double
+  mtcars$mpg_dbl <- as.double(mtcars$mpg)
+  expect_true({
+    mod <- wand(mpg_dbl ~ disp, data = mtcars)
+    T
+  })
+
+  # integer
+  # double
+  mtcars$mpg_int <- as.integer(mtcars$mpg)
+  expect_true({
+    mod <- wand(mpg_int ~ disp, data = mtcars)
+    T
+  })
+})
+

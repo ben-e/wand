@@ -68,7 +68,7 @@ predict_wand_bridge <- function(type, model, predictors) {
   model$model_obj$eval()
 
   predict_function <- get_wand_predict_function(type)
-  predictions <- predict_function(model$model_obj, wand_predictors, model$outcome_info$classes)
+  predictions <- predict_function(model$model_obj, wand_predictors, model$outcome_info)
 
   hardhat::validate_prediction_size(predictions, predictors)
 
@@ -87,27 +87,28 @@ get_wand_predict_function <- function(type) {
 # --------------------------------------------------------------------------------------------------
 # Implementation
 
-predict_wand_numeric <- function(model, predictors, levels = NULL) {
+predict_wand_numeric <- function(model, predictors, outcome_info) {
   predictions <- model(predictors$tensors)
   predictions <- as.array(predictions)[ , 1]
+  predictions <- predictions * outcome_info$sd + outcome_info$mean
   # convert NaN to NA
   predictions[is.nan(predictions)] <- NA
   # Return spruced predictions
   hardhat::spruce_numeric(predictions)
 }
 
-predict_wand_prob <- function(model, predictors, levels) {
+predict_wand_prob <- function(model, predictors, outcome_info) {
   predictions <- model(predictors$tensors)
   predictions <- as.array(predictions)
   predictions[is.nan(predictions)] <- NA
-  hardhat::spruce_prob(pred_levels = levels, predictions)
+  hardhat::spruce_prob(pred_levels = outcome_info$classes, predictions)
 }
 
-predict_wand_class <- function(model, predictors, levels) {
+predict_wand_class <- function(model, predictors, outcome_info) {
   predictions <- model(predictors$tensors)
   predictions <- as.array(predictions)
   predictions[is.nan(predictions)] <- NA
   predictions <- apply(predictions, 1,
                        \(x) if (any(is.na(x))) NA else which.max(x))
-  hardhat::spruce_class(factor(levels[predictions], levels = levels))
+  hardhat::spruce_class(factor(outcome_info$classes[predictions], levels = outcome_info$classes))
 }

@@ -1,5 +1,3 @@
-context("wand-dataset")
-
 test_that("build_wand_dataset builds a dataset", {
   skip_if(!torch::torch_is_installed())
 
