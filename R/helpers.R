@@ -78,3 +78,15 @@ hydrate_model <- function(model) {
   module <- torch::torch_load(con)
   module
 }
+
+#' Scales an outcome given a list containing mean and sd.
+#'
+#' This function comes from brulee. It is used to scale the outcome before training and prediction.
+#'
+#' @param y The numeric outcome of interest.
+#' @param stats A named list containing `mean` and `sd` entries.
+#'
+#' @return The scaled `y` value
+scale_y <- function(y, stats) {
+  (y - stats$mean)/stats$sd
+}

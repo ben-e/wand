@@ -1,5 +1,3 @@
-context("torch-serialization")
-
 test_that("model hydration followed by dehydration returns a raw object", {
   skip_if(!torch::torch_is_installed())
 
