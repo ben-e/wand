@@ -16,6 +16,7 @@ Imports:
     parsnip,
     rlang,
     stats,
+    tibble,
     torch,
     utils
 Suggests: 
