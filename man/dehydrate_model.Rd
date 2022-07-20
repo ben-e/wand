@@ -2,7 +2,7 @@
 % Please edit documentation in R/helpers.R
 \name{dehydrate_model}
 \alias{dehydrate_model}
-\title{Store a \code{torch} module as a raw R object}
+\title{Store a \code{torch} module as a raw R object.}
 \usage{
 dehydrate_model(model)
 }

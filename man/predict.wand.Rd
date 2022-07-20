@@ -35,7 +35,7 @@ if (torch::torch_is_installed()) {
   test <- mtcars[21:32, -1]
 
   # Fit
-  mod <- wand(mpg ~ cyl + log(drat), train)
+  mod <- wand(mpg ~ cyl + log(drat) + s_mlp(hp), train)
 
   # Predict, with preprocessing
   predict(mod, test)

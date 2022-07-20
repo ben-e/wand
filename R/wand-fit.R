@@ -79,7 +79,8 @@ wand.default <- function(x, ...) {
 
 #' @export
 #' @rdname wand
-wand.data.frame <- function(x, y, smooth_specs,
+wand.data.frame <- function(x, y,
+                            smooth_specs = list(),
                             # batch
                             batch_size = 32,
                             validation_prop = 0.1,
@@ -90,7 +91,12 @@ wand.data.frame <- function(x, y, smooth_specs,
                             # misc
                             verbose = F,
                             ...) {
+
   processed <- hardhat::mold(x, y)
+  smooth_specs <- lapply(
+    smooth_specs,
+    \(spec) append(spec, list(processed = hardhat::mold(spec$formula, data = x)))
+  )
 
   wand_bridge(
     processed,
@@ -109,7 +115,8 @@ wand.data.frame <- function(x, y, smooth_specs,
 
 #' @export
 #' @rdname wand
-wand.matrix <- function(x, y, smooth_specs,
+wand.matrix <- function(x, y,
+                        smooth_specs = list(),
                         # batch
                         batch_size = 32,
                         validation_prop = 0.1,
@@ -120,7 +127,16 @@ wand.matrix <- function(x, y, smooth_specs,
                         # misc
                         verbose = F,
                         ...) {
+
+  if (is.null(colnames(x)))
+    rlang::abort("`x` must have column names.")
+
   processed <- hardhat::mold(x, y)
+  smooth_specs <- lapply(
+    smooth_specs,
+    \(spec) append(spec, list(processed = hardhat::mold(spec$formula, data = x)))
+  )
+
   wand_bridge(
     processed,
     smooth_specs,
@@ -149,27 +165,15 @@ wand.formula <- function(formula, data,
                          # misc
                          verbose = F,
                          ...) {
-  # Get smooth specs form the formula
-  smooth_specs <- list()
-  for (term in attr(stats::terms(formula, data = data), "term.labels")) {
-    # TODO I don't like that this assumes/requires that smoothers start with s_, perhaps
-    # use a registry of smoothers? See parsnip's model registry as an example
-    if (grepl("^s_", term)) {
-      # save smoother
-      smooth_specs[[length(smooth_specs) + 1]] <- eval(parse(text = term))
-      # update formula
-      # TODO I think this should be done using a blueprint, but I'm having trouble with those.
-      formula <- stats::update(
-        formula,
-        paste0(". ~ . - ", term,
-               " + ",  paste0(sapply(smooth_specs[[length(smooth_specs)]]$features,
-                                     rlang::quo_name),
-                              collapse = " + "))
-      )
-    }
-  }
 
-  processed <- hardhat::mold(formula, data)
+  # Extract smooth terms from the formula
+  new_formula_and_smooth_specs <- extract_smooths(formula)
+  processed <- hardhat::mold(new_formula_and_smooth_specs$formula, data)
+  smooth_specs <- lapply(
+    new_formula_and_smooth_specs$smooth_specs,
+    \(spec) append(spec, list(processed = hardhat::mold(spec$formula, data = data)))
+  )
+
   wand_bridge(
     processed,
     smooth_specs = smooth_specs,
@@ -188,7 +192,7 @@ wand.formula <- function(formula, data,
 #' @export
 #' @rdname wand
 wand.recipe <- function(x, data,
-                        smooth_specs,
+                        smooth_specs = list(),
                         # batch
                         batch_size = 32,
                         validation_prop = 0.1,
@@ -199,7 +203,14 @@ wand.recipe <- function(x, data,
                         # misc
                         verbose = F,
                         ...) {
+
   processed <- hardhat::mold(x, data)
+  # unlike the other methods, the smooth specs are molded on the already processed data
+  smooth_specs <- lapply(
+    smooth_specs,
+    \(spec) append(spec, list(processed = hardhat::mold(spec$formula, data = processed$predictors)))
+  )
+
   wand_bridge(
     processed,
     smooth_specs,
@@ -216,7 +227,8 @@ wand.recipe <- function(x, data,
 # --------------------------------------------------------------------------------------------------
 # Bridge
 
-wand_bridge <- function(processed, smooth_specs,
+wand_bridge <- function(processed,
+                        smooth_specs,
                         # batch
                         batch_size,
                         validation_prop,
@@ -227,15 +239,25 @@ wand_bridge <- function(processed, smooth_specs,
                         # misc
                         verbose,
                         ...) {
-  predictors <- processed$predictors
+
+  # If a term is used in a smooth, remove it from the linear predictors
+  # TODO For XY and recipe, if a user does something like s_mlp( ~ log(z)) then z will be included
+  # as a linear feature and log(z) will be included as a smooth feature. What do? Warn users they
+  # should preproc transformations like this for these interfaces?
+  smooth_features_intersect <- intersect(unique(unlist(lapply(smooth_specs, \(i) i$features))),
+                                         names(processed$predictors))
+  linear_predictors <- dplyr::select(processed$predictors, -all_of(smooth_features_intersect))
+
   outcome <- processed$outcomes[[1]]
 
+  # make sure smooths are named
   if (!rlang::is_missing(smooth_specs) && is.null(names(smooth_specs)) && length(smooth_specs) > 0)
     names(smooth_specs) <- paste0("smooth_", 1:length(smooth_specs))
 
   fit <- wand_impl(
-    predictors, outcome,
+    linear_predictors,
     smooth_specs,
+    outcome,
     # batch
     batch_size,
     validation_prop,
@@ -247,12 +269,21 @@ wand_bridge <- function(processed, smooth_specs,
     verbose = verbose
   )
 
+  # The constructor doesn't need the full smooth spec, just enough to make predictions
+  for (i in seq_along(smooth_specs)) {
+    smooth_specs[[i]]$blueprint <- smooth_specs[[i]]$processed$blueprint
+    smooth_specs[[i]]$processed <- NULL
+    smooth_specs[[i]]$torch_module <- NULL
+    smooth_specs[[i]]$torch_module_parameters <- NULL
+    smooth_specs[[i]]$n_smooth_features <- NULL
+  }
+
   new_wand(
     model_obj = fit$model_obj,
     best_model_params = fit$best_model_params,
     loss = fit$loss,
     validation_loss = fit$validation_loss,
-    smooth_specs = fit$smooth_specs,
+    smooth_specs = smooth_specs,
     training_params = fit$training_params,
     outcome_info = fit$outcome_info,
     mode = fit$mode,
@@ -264,8 +295,9 @@ wand_bridge <- function(processed, smooth_specs,
 # --------------------------------------------------------------------------------------------------
 # Implementation
 
-wand_impl <- function(predictors, outcome,
+wand_impl <- function(linear_predictors,
                       smooth_specs,
+                      outcome,
                       # batch
                       batch_size,
                       validation_prop,
@@ -304,10 +336,15 @@ wand_impl <- function(predictors, outcome,
   # Prepare validation data if needed
   if (validation_prop > 0) {
     in_val <- sample(seq_along(outcome), floor(length(outcome) * validation_prop))
-    predictors_val <- predictors[in_val, , drop = FALSE]
+
+    linear_predictors_val <- linear_predictors[in_val, , drop = FALSE]
+    smooth_predictors_val <- lapply(smooth_specs,
+                                    \(spec) spec$processed$predictors[in_val, , drop = FALSE])
     outcome_val <- outcome[in_val]
 
-    predictors <- predictors[-in_val, , drop = FALSE]
+    linear_predictors <- linear_predictors[-in_val, , drop = FALSE]
+    smooth_predictors <- lapply(smooth_specs,
+                                \(spec) spec$processed$predictors[-in_val, , drop = FALSE])
     outcome <- outcome[-in_val]
 
     # scale the outcome
@@ -317,24 +354,40 @@ wand_impl <- function(predictors, outcome,
       outcome_val <- scale_y(outcome_val, outcome_info)
     }
 
-    # Build val dataset
-    ds_val <- build_wand_dataset(predictors_val, outcome_val, smooth_specs, requires_grad = T)
+    # Build validation and training datasets
+    ds_val <- build_wand_dataset(linear_predictors_val,
+                                 smooth_predictors_val,
+                                 outcome_val,
+                                 requires_grad = F)
+
+    ds <- build_wand_dataset(linear_predictors,
+                             smooth_predictors,
+                             outcome,
+                             requires_grad = T)
+
   } else {
+    # If no validation, then just scale everything
     if (mode == "regression") {
       outcome_info <- list(mean = mean(outcome), sd = stats::sd(outcome))
       outcome <- scale_y(outcome, outcome_info)
     }
+
+    # and build a single dataset
+    ds <- build_wand_dataset(linear_predictors,
+                             lapply(smooth_specs, \(spec) spec$processed$predictors),
+                             outcome,
+                             requires_grad = T)
   }
 
-  # Build dataset and dataloader
-  ds <- build_wand_dataset(predictors, outcome, smooth_specs, requires_grad = T)
+  # Build batch dataloader
   dl <- torch::dataloader(ds, batch_size = batch_size)
 
   # Initialize wand modules
-  if ("x_linear" %in% names(ds$tensors))
-    n_linear_features <- ncol(ds$tensors$x_linear)
-  else
-    n_linear_features <- 0
+  n_linear_features <- ifelse("x_linear" %in% names(ds$tensors),
+                              ncol(ds$tensors[['x_linear']]),
+                              0)
+  # TODO At this point the smooth specs also include a bunch of data that doesn't need to be passed
+  # to wand module init, is this slow?
   model <- wand_module(n_linear_features, smooth_specs, mode = mode, n_classes = n_classes)
 
   # Choose loss function
@@ -366,6 +419,7 @@ wand_impl <- function(predictors, outcome,
     coro::loop(
       for (batch in dl) {
         pred <- model(batch)
+
         loss <- loss_fn(pred, batch$y)
 
         optimizer$zero_grad()
@@ -423,7 +477,6 @@ wand_impl <- function(predictors, outcome,
     best_model_params = best_model_params,
     loss = loss_vec,
     validation_loss = val_loss_vec,
-    smooth_specs = if (rlang::is_missing(smooth_specs)) list() else smooth_specs,
     training_params = list(batch_size = batch_size,
                            validation_prop = validation_prop,
                            epochs = epochs,
