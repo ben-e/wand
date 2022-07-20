@@ -30,9 +30,7 @@ build_wand_dataset <- function(x, y, smooth_specs, requires_grad = T) {
   if (!rlang::is_missing(smooth_specs)) {
     for (i in seq_along(smooth_specs)) {
       ds_tensors[[names(smooth_specs)[i]]] <- torch::torch_tensor(
-        # TODO This transmute is performing computations (e.g. log(x)) that should probably be
-        # done using mold/blueprints?
-        as.matrix(dplyr::transmute(x, !!!smooth_specs[[i]]$features)),
+        as.matrix(dplyr::select(x, !!!smooth_specs[[i]]$features)),
         requires_grad = requires_grad
       )
     }

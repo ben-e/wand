@@ -82,6 +82,11 @@ test_that("wand fits without linear features", {
     mod <- wand(mpg ~ s_mlp(hp), data = mtcars)
     T
   })
+
+  expect_true({
+    mod <- wand(mpg ~ s_mlp(log(hp)), data = mtcars)
+    T
+  })
 })
 
 test_that("verbose wand informs the user of the model's mode", {

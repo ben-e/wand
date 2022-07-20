@@ -153,7 +153,7 @@ wand.formula <- function(formula, data,
   smooth_specs <- list()
   for (term in attr(stats::terms(formula, data = data), "term.labels")) {
     # TODO I don't like that this assumes/requires that smoothers start with s_, perhaps
-    # use a registry of smoothers?
+    # use a registry of smoothers? See parsnip's model registry as an example
     if (grepl("^s_", term)) {
       # save smoother
       smooth_specs[[length(smooth_specs) + 1]] <- eval(parse(text = term))

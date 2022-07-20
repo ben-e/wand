@@ -42,7 +42,26 @@ ecosystem via the `nn_additive_model` specification and `wand` engine.
 Using `wand` alone:
 
 ``` r
-# TODO
+library(wand)
+library(recipes)
+library(workflows)
+library(yardstick)
+
+data(bivariate, package = "modeldata")
+
+# Linear features only
+wand_fit <- wand(Class ~ log(A) + log(B), 
+                 data = bivariate_train)
+predict(wand_fit, bivariate_test, type = "prob") %>% 
+  bind_cols(bivariate_test) %>% 
+  roc_auc(Class, .pred_One)
+
+# MLP only
+wand_fit <- wand(Class ~ log(A) + log(B) + s_mlp(log(A), log(B)), 
+                 data = bivariate_train)
+predict(wand_fit, bivariate_test, type = "prob") %>% 
+  bind_cols(bivariate_test) %>% 
+  roc_auc(Class, .pred_One)
 ```
 
 Using `wand` with the `tidymodels` ecosystem:
@@ -62,6 +81,8 @@ Using `wand` with the `tidymodels` ecosystem:
 -   [ ] Explore implementation of other deep module architectures (RNN,
     CNN, transformer) with a focus on fitting mixed-type data
     (e.g. tabular + image data).
+-   [ ] Add L1/L2 penalties to optimization, see `brulee`.
+-   [ ] Explore use of MC dropout to generate prediction intervals.
 
 ### User Interface
 
@@ -73,6 +94,8 @@ Using `wand` with the `tidymodels` ecosystem:
 -   [ ] Explore the use of constructor functions for new smooth
     specification functions, allowing users to specify their own
     smoothers using their own `torch::nn_module`’s.
+-   [ ] Explore the use of a smooth function registry, similar to how
+    `parsnip` tracks models.
 
 ### Tuning
 
@@ -90,6 +113,8 @@ Using `wand` with the `tidymodels` ecosystem:
 -   [ ] Implement `summary` method.
 -   [ ] Implement `plot` methods for plotting training curves and smooth
     functions (ala `mgcv`).
+-   [ ] Implement graph/module plot to show how features flow through
+    modules.
 -   [ ] Add compatibility with the `marginaleffects` package.
 -   [ ] Add compatibility with the `ggeffects` package.
 
@@ -103,12 +128,12 @@ Using `wand` with the `tidymodels` ecosystem:
 -   [x] Document functions and add examples.
 -   [x] Add tests for each user interface.
 -   [x] Add tests for internal functions.
--   **Ongoing** Add more tests :)
+-   [ ] **Ongoing** Add more tests :)
 
 ## Related Work
 
-The ideas underpinning this package are not wholly original, in
-particular this package draws from:
+The ideas underpinning this package are not original, in particular this
+package draws from:
 
 -   The original [Wide & Deep Learning for Recommender
     Systems](https://arxiv.org/abs/1606.07792) paper.
