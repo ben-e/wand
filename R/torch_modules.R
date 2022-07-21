@@ -75,6 +75,9 @@ wand_regression_module <- torch::nn_module(
 wand_classification_module <- torch::nn_module(
   "wand_classification_module",
   initialize = function(n_features, n_classes) {
+    if (n_classes < 2)
+      rlang::abort("At least two classes required for `classification` mode.")
+
     self$model <- torch::nn_sequential(
       torch::nn_linear(n_features, n_classes),
       torch::nn_softmax(dim = 2)

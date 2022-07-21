@@ -38,6 +38,9 @@ hydrate_model <- function(model) {
 #'
 #' @return The scaled `y` value
 scale_y <- function(y, stats) {
+  if (is.factor(y))
+    rlang::abort("Factors can not be scaled.")
+
   (y - stats$mean)/stats$sd
 }
 

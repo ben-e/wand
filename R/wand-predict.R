@@ -39,7 +39,7 @@ predict.wand <- function(object, new_data, type = NULL, ...) {
   # recall that recipes are molded/forged on downstream
   if ("recipe_blueprint" %in% class(object$blueprint)) {
     forged_smooths <- lapply(object$smooth_specs,
-                             \(spec) hardhat::forge(forged$predictors, spec$blueprint)$predictors)
+                             \(spec) hardhat::forge(forged_linear, spec$blueprint)$predictors)
   } else {
     forged_smooths <- lapply(object$smooth_specs,
                              \(spec) hardhat::forge(new_data, spec$blueprint)$predictors)
