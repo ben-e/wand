@@ -42,27 +42,14 @@ ecosystem via the `nn_additive_model` specification and `wand` engine.
 Using `wand` alone:
 
 ``` r
-library(wand)
-library(dplyr)
-#> 
-#> Attaching package: 'dplyr'
-#> The following objects are masked from 'package:stats':
-#> 
-#>     filter, lag
-#> The following objects are masked from 'package:base':
-#> 
-#>     intersect, setdiff, setequal, union
-library(parsnip)
-library(recipes)
-#> 
-#> Attaching package: 'recipes'
-#> The following object is masked from 'package:stats':
-#> 
-#>     step
-library(workflows)
-library(yardstick)
-#> For binary classification, the first factor level is assumed to be the event.
-#> Use the argument `event_level = "second"` to alter this as needed.
+suppressPackageStartupMessages({
+  library(wand)
+  library(dplyr)
+  library(parsnip)
+  library(recipes)
+  library(workflows)
+  library(yardstick)
+})
 
 data(bivariate, package = "modeldata")
 
@@ -74,7 +61,7 @@ predict(wand_fit, bivariate_test, type = "prob") %>%
 #> # A tibble: 1 × 3
 #>   .metric .estimator .estimate
 #>   <chr>   <chr>          <dbl>
-#> 1 roc_auc binary         0.752
+#> 1 roc_auc binary         0.744
 ```
 
 Using `wand` with the `tidymodels` ecosystem:
@@ -100,7 +87,7 @@ predict(wand_wf_fit, bivariate_test, type = "prob") %>%
 #> # A tibble: 1 × 3
 #>   .metric .estimator .estimate
 #>   <chr>   <chr>          <dbl>
-#> 1 roc_auc binary         0.752
+#> 1 roc_auc binary         0.751
 ```
 
 ## Feature Roadmap

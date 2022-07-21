@@ -42,12 +42,14 @@ The primary model fitting function, `wand::wand` has formula, x/y, and recipe us
 Using `wand` alone:
 
 ```{r}
-library(wand)
-library(dplyr)
-library(parsnip)
-library(recipes)
-library(workflows)
-library(yardstick)
+suppressPackageStartupMessages({
+  library(wand)
+  library(dplyr)
+  library(parsnip)
+  library(recipes)
+  library(workflows)
+  library(yardstick)
+})
 
 data(bivariate, package = "modeldata")
 
