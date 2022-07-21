@@ -17,11 +17,11 @@ build_wand_dataset(
 \item{smooth_predictors}{A named list of R where each entry is a \strong{dataframe} or \strong{matrix}
 representing a smooth predictor.}
 
+\item{outcome}{The target as an R \strong{vector}.}
+
 \item{requires_grad}{A boolean indicating whether or not the prediction tensors need gradients.
 This can be turned off for datasets that are only used for evaluation, e.g. validation data or
 prediction data.}
-
-\item{y}{The target as an R \strong{vector}.}
 }
 \description{
 Builds \code{wand} compatible \code{torch::tensor_dataset}s

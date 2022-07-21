@@ -20,7 +20,7 @@ s_mlp <- function(..., hidden_units = c(32, 32, 32)) {
   formula <- dots_to_formula(...)
   validate_smooth_formula(formula)
 
-  features <- attr(terms(formula), "term.labels")
+  features <- attr(stats::terms(formula), "term.labels")
 
   list(
     formula = formula,

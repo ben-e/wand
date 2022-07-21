@@ -21,14 +21,11 @@
 #' @examples
 #' \donttest{
 #' if (torch::torch_is_installed()) {
-#'   train <- mtcars[1:20,]
-#'   test <- mtcars[21:32, -1]
-#'
 #'   # Fit
-#'   mod <- wand(mpg ~ cyl + log(drat) + s_mlp(hp), train)
+#'   mod <- wand(mpg ~ cyl + log(drat) + s_mlp(hp), mtcars)
 #'
 #'   # Predict, with preprocessing
-#'   predict(mod, test)
+#'   predict(mod, mtcars)
 #' }
 #' }
 #'
@@ -49,7 +46,7 @@ predict.wand <- function(object, new_data, type = NULL, ...) {
   smooth_features_intersect <- intersect(unique(unlist(lapply(object$smooth_specs,
                                                               \(i) i$features))),
                                          names(forged_linear))
-  forged_linear <- dplyr::select(forged_linear, -all_of(smooth_features_intersect))
+  forged_linear <- dplyr::select(forged_linear, -dplyr::all_of(smooth_features_intersect))
 
 
   if (is.null(type)) {
@@ -84,7 +81,8 @@ predict_wand_bridge <- function(type, object, linear_predictors, smooth_predicto
 
   predict_function <- get_wand_predict_function(type)
   predictions <- predict_function(object$model_obj, wand_predictors, object$outcome_info)
-  hardhat::validate_prediction_size(predictions, bind_cols(linear_predictors, smooth_predictors))
+  hardhat::validate_prediction_size(predictions,
+                                    dplyr::bind_cols(linear_predictors, smooth_predictors))
 
   predictions
 }

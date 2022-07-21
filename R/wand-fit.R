@@ -246,7 +246,8 @@ wand_bridge <- function(processed,
   # should preproc transformations like this for these interfaces?
   smooth_features_intersect <- intersect(unique(unlist(lapply(smooth_specs, \(i) i$features))),
                                          names(processed$predictors))
-  linear_predictors <- dplyr::select(processed$predictors, -all_of(smooth_features_intersect))
+  linear_predictors <- dplyr::select(processed$predictors,
+                                     -dplyr::all_of(smooth_features_intersect))
 
   outcome <- processed$outcomes[[1]]
 

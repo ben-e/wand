@@ -6,6 +6,12 @@
 \usage{
 validate_smooth_formula(formula)
 }
+\arguments{
+\item{formula}{A formula.}
+}
+\value{
+The unchanged formula.
+}
 \description{
 Validate a formula for a smooth specification.
 }

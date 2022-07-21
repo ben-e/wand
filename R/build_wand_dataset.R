@@ -5,7 +5,7 @@
 #' @param linear_predictors The linear predictors as an R __dataframe__ or __matrix__.
 #' @param smooth_predictors A named list of R where each entry is a __dataframe__ or __matrix__
 #'   representing a smooth predictor.
-#' @param y The target as an R __vector__.
+#' @param outcome The target as an R __vector__.
 #' @param requires_grad A boolean indicating whether or not the prediction tensors need gradients.
 #'   This can be turned off for datasets that are only used for evaluation, e.g. validation data or
 #'   prediction data.

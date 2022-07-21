@@ -31,14 +31,11 @@ Predict from a \code{wand}
 \examples{
 \donttest{
 if (torch::torch_is_installed()) {
-  train <- mtcars[1:20,]
-  test <- mtcars[21:32, -1]
-
   # Fit
-  mod <- wand(mpg ~ cyl + log(drat) + s_mlp(hp), train)
+  mod <- wand(mpg ~ cyl + log(drat) + s_mlp(hp), mtcars)
 
   # Predict, with preprocessing
-  predict(mod, test)
+  predict(mod, mtcars)
 }
 }
 
