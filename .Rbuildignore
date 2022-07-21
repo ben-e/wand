@@ -4,3 +4,4 @@
 ^wand\.Rproj$
 ^\.github$
 ^codecov\.yml$
+^README\.Rmd$

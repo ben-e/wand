@@ -2,9 +2,7 @@
 % Please edit documentation in R/torch_modules.R
 \name{wand_regression_module}
 \alias{wand_regression_module}
-\title{TODO should s_ functions be an S3 class?
-TODO what about an s_ constructor function?
-A linear regression \code{torch::nn_module} module}
+\title{A linear regression \code{torch::nn_module} module}
 \usage{
 wand_regression_module(n_features)
 }

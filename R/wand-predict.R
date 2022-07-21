@@ -21,20 +21,33 @@
 #' @examples
 #' \donttest{
 #' if (torch::torch_is_installed()) {
-#'   train <- mtcars[1:20,]
-#'   test <- mtcars[21:32, -1]
-#'
 #'   # Fit
-#'   mod <- wand(mpg ~ cyl + log(drat), train)
+#'   mod <- wand(mpg ~ cyl + log(drat) + s_mlp(hp), mtcars)
 #'
 #'   # Predict, with preprocessing
-#'   predict(mod, test)
+#'   predict(mod, mtcars)
 #' }
 #' }
 #'
 #' @export
 predict.wand <- function(object, new_data, type = NULL, ...) {
-  forged <- hardhat::forge(new_data, object$blueprint)
+  forged_linear <- hardhat::forge(new_data, object$blueprint)$predictors
+
+  # recall that recipes are molded/forged on downstream
+  if ("recipe_blueprint" %in% class(object$blueprint)) {
+    forged_smooths <- lapply(object$smooth_specs,
+                             \(spec) hardhat::forge(forged_linear, spec$blueprint)$predictors)
+  } else {
+    forged_smooths <- lapply(object$smooth_specs,
+                             \(spec) hardhat::forge(new_data, spec$blueprint)$predictors)
+  }
+
+  # Remove smoothed terms from the linear data
+  smooth_features_intersect <- intersect(unique(unlist(lapply(object$smooth_specs,
+                                                              \(i) i$features))),
+                                         names(forged_linear))
+  forged_linear <- dplyr::select(forged_linear, -dplyr::all_of(smooth_features_intersect))
+
 
   if (is.null(type)) {
     if (object$mode == "regression")
@@ -44,7 +57,7 @@ predict.wand <- function(object, new_data, type = NULL, ...) {
   }
 
   rlang::arg_match(type, valid_wand_predict_types())
-  predict_wand_bridge(type, object, forged$predictors)
+  predict_wand_bridge(type, object, forged_linear, forged_smooths)
 }
 
 valid_wand_predict_types <- function() {
@@ -54,23 +67,22 @@ valid_wand_predict_types <- function() {
 # --------------------------------------------------------------------------------------------------
 # Bridge
 
-predict_wand_bridge <- function(type, model, predictors) {
+predict_wand_bridge <- function(type, object, linear_predictors, smooth_predictors) {
   # Load data into a wand friendly dataset, no outcome or gradient required
-  wand_predictors <- build_wand_dataset(predictors,
-                                        smooth_specs = model$smooth_specs,
+  wand_predictors <- build_wand_dataset(linear_predictors, smooth_predictors,
                                         requires_grad = F)
 
   # Rehydrate the model
-  model$model_obj <- hydrate_model(model$model_obj)
+  object$model_obj <- hydrate_model(object$model_obj)
 
   # Load model params into model and set eval mode
-  model$model_obj$load_state_dict(lapply(model$best_model_params, torch::torch_tensor))
-  model$model_obj$eval()
+  object$model_obj$load_state_dict(lapply(object$best_model_params, torch::torch_tensor))
+  object$model_obj$eval()
 
   predict_function <- get_wand_predict_function(type)
-  predictions <- predict_function(model$model_obj, wand_predictors, model$outcome_info)
-
-  hardhat::validate_prediction_size(predictions, predictors)
+  predictions <- predict_function(object$model_obj, wand_predictors, object$outcome_info)
+  hardhat::validate_prediction_size(predictions,
+                                    dplyr::bind_cols(linear_predictors, smooth_predictors))
 
   predictions
 }

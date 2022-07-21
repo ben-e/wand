@@ -16,7 +16,7 @@ wand(x, ...)
 \method{wand}{data.frame}(
   x,
   y,
-  smooth_specs,
+  smooth_specs = list(),
   batch_size = 32,
   validation_prop = 0.1,
   epochs = 10,
@@ -29,7 +29,7 @@ wand(x, ...)
 \method{wand}{matrix}(
   x,
   y,
-  smooth_specs,
+  smooth_specs = list(),
   batch_size = 32,
   validation_prop = 0.1,
   epochs = 10,
@@ -54,7 +54,7 @@ wand(x, ...)
 \method{wand}{recipe}(
   x,
   data,
-  smooth_specs,
+  smooth_specs = list(),
   batch_size = 32,
   validation_prop = 0.1,
   epochs = 10,
