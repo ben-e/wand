@@ -43,31 +43,64 @@ Using `wand` alone:
 
 ``` r
 library(wand)
+library(dplyr)
+#> 
+#> Attaching package: 'dplyr'
+#> The following objects are masked from 'package:stats':
+#> 
+#>     filter, lag
+#> The following objects are masked from 'package:base':
+#> 
+#>     intersect, setdiff, setequal, union
+library(parsnip)
 library(recipes)
+#> 
+#> Attaching package: 'recipes'
+#> The following object is masked from 'package:stats':
+#> 
+#>     step
 library(workflows)
 library(yardstick)
+#> For binary classification, the first factor level is assumed to be the event.
+#> Use the argument `event_level = "second"` to alter this as needed.
 
 data(bivariate, package = "modeldata")
 
-# Linear features only
-wand_fit <- wand(Class ~ log(A) + log(B), 
+wand_fit <- wand(Class ~ log(A) + s_mlp(log(B), hidden_units = c(16, 16, 8)),
                  data = bivariate_train)
 predict(wand_fit, bivariate_test, type = "prob") %>% 
   bind_cols(bivariate_test) %>% 
-  roc_auc(Class, .pred_One)
-
-# MLP only
-wand_fit <- wand(Class ~ log(A) + log(B) + s_mlp(log(A), log(B)), 
-                 data = bivariate_train)
-predict(wand_fit, bivariate_test, type = "prob") %>% 
-  bind_cols(bivariate_test) %>% 
-  roc_auc(Class, .pred_One)
+  roc_auc(Class, .pred_Two)
+#> # A tibble: 1 × 3
+#>   .metric .estimator .estimate
+#>   <chr>   <chr>          <dbl>
+#> 1 roc_auc binary         0.752
 ```
 
 Using `wand` with the `tidymodels` ecosystem:
 
 ``` r
-# TODO
+wand_recipe <- recipe(Class ~ A + B, 
+                      data = bivariate_train) %>% 
+  step_log(all_numeric_predictors())
+
+wand_model_spec <- nn_additive_mod(mode = "classification") %>% 
+  set_engine("wand", smooth_specs = list(B = s_mlp(B, hidden_units = c(16, 16, 8))))
+# note that `B` in this smooth will already have been log transformed
+
+wand_wf <- workflow() %>% 
+  add_recipe(wand_recipe) %>% 
+  add_model(wand_model_spec)
+
+wand_wf_fit <- fit(wand_wf, bivariate_train)
+
+predict(wand_wf_fit, bivariate_test, type = "prob") %>% 
+  bind_cols(bivariate_test) %>% 
+  roc_auc(Class, .pred_Two)
+#> # A tibble: 1 × 3
+#>   .metric .estimator .estimate
+#>   <chr>   <chr>          <dbl>
+#> 1 roc_auc binary         0.752
 ```
 
 ## Feature Roadmap

@@ -41,33 +41,43 @@ The primary model fitting function, `wand::wand` has formula, x/y, and recipe us
 
 Using `wand` alone:
 
-```{r, eval = F}
+```{r}
 library(wand)
+library(dplyr)
+library(parsnip)
 library(recipes)
 library(workflows)
 library(yardstick)
 
 data(bivariate, package = "modeldata")
 
-# Linear features only
-wand_fit <- wand(Class ~ log(A) + log(B), 
+wand_fit <- wand(Class ~ log(A) + s_mlp(log(B), hidden_units = c(16, 16, 8)),
                  data = bivariate_train)
 predict(wand_fit, bivariate_test, type = "prob") %>% 
   bind_cols(bivariate_test) %>% 
-  roc_auc(Class, .pred_One)
-
-# MLP only
-wand_fit <- wand(Class ~ log(A) + log(B) + s_mlp(log(A), log(B)), 
-                 data = bivariate_train)
-predict(wand_fit, bivariate_test, type = "prob") %>% 
-  bind_cols(bivariate_test) %>% 
-  roc_auc(Class, .pred_One)
+  roc_auc(Class, .pred_Two)
 ```
 
 Using `wand` with the `tidymodels` ecosystem:
 
 ```{r}
-# TODO
+wand_recipe <- recipe(Class ~ A + B, 
+                      data = bivariate_train) %>% 
+  step_log(all_numeric_predictors())
+
+wand_model_spec <- nn_additive_mod(mode = "classification") %>% 
+  set_engine("wand", smooth_specs = list(B = s_mlp(B, hidden_units = c(16, 16, 8))))
+# note that `B` in this smooth will already have been log transformed
+
+wand_wf <- workflow() %>% 
+  add_recipe(wand_recipe) %>% 
+  add_model(wand_model_spec)
+
+wand_wf_fit <- fit(wand_wf, bivariate_train)
+
+predict(wand_wf_fit, bivariate_test, type = "prob") %>% 
+  bind_cols(bivariate_test) %>% 
+  roc_auc(Class, .pred_Two)
 ```
 
 ## Feature Roadmap
