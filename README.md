@@ -61,7 +61,7 @@ predict(wand_fit, bivariate_test, type = "prob") %>%
 #> # A tibble: 1 × 3
 #>   .metric .estimator .estimate
 #>   <chr>   <chr>          <dbl>
-#> 1 roc_auc binary         0.744
+#> 1 roc_auc binary         0.750
 ```
 
 Using `wand` with the `tidymodels` ecosystem:
@@ -71,9 +71,12 @@ wand_recipe <- recipe(Class ~ A + B,
                       data = bivariate_train) %>% 
   step_log(all_numeric_predictors())
 
-wand_model_spec <- nn_additive_mod(mode = "classification") %>% 
-  set_engine("wand", smooth_specs = list(B = s_mlp(B, hidden_units = c(16, 16, 8))))
-# note that `B` in this smooth will already have been log transformed
+wand_model_spec <- nn_additive_mod(
+  mode = "classification", 
+  engine = "wand",
+  smooth_specs = list(B = s_mlp(B, hidden_units = c(16, 16, 8)))
+  # note that `B` in this smooth will already have been log transformed
+)
 
 wand_wf <- workflow() %>% 
   add_recipe(wand_recipe) %>% 
@@ -83,11 +86,12 @@ wand_wf_fit <- fit(wand_wf, bivariate_train)
 
 predict(wand_wf_fit, bivariate_test, type = "prob") %>% 
   bind_cols(bivariate_test) %>% 
-  roc_auc(Class, .pred_Two)
+  # TODO need to make sure event_level is actually respected by the model
+  roc_auc(Class, .pred_One)
 #> # A tibble: 1 × 3
 #>   .metric .estimator .estimate
 #>   <chr>   <chr>          <dbl>
-#> 1 roc_auc binary         0.751
+#> 1 roc_auc binary         0.796
 ```
 
 ## Feature Roadmap
@@ -119,7 +123,7 @@ predict(wand_wf_fit, bivariate_test, type = "prob") %>%
 
 ### Tuning
 
--   [ ] Add `tune` compatibility for model training parameters.
+-   [x] Add `tune` compatibility for model training parameters.
 -   [ ] Add `tune` compatibility for output layer regularization,
     similar to `brulee`.
 -   [ ] Explore possibility of “compiling” models such that parameters

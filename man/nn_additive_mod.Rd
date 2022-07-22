@@ -10,7 +10,8 @@ nn_additive_mod(
   batch_size = NULL,
   epochs = NULL,
   learn_rate = NULL,
-  stop_iter = NULL
+  stop_iter = NULL,
+  smooth_specs = NULL
 )
 }
 \arguments{
@@ -29,6 +30,11 @@ model are "unknown", "regression", or "classification".}
 before training is stopped. If \code{validation_prop > 0} then validation loss is used, otherwise
 loss is evaluated using the whole training set. Set this parameter to \code{Inf} to prevent any
 early stopping.}
+
+\item{smooth_specs}{A named list of smooth specifications. A specification is simply the output
+oaf \code{s_} functions like \code{s_mlp}. If the list is not named, or if a \strong{formula} is used, the
+smooths will be named sequentially. When using a \strong{formula} the smooths are specified directly
+as part of the formula.}
 }
 \description{
 Generalized additive model via neural networks

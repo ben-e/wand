@@ -175,12 +175,14 @@ nn_additive_mod <- function(mode = "unknown",
                             batch_size = NULL,
                             epochs = NULL,
                             learn_rate = NULL,
-                            stop_iter = NULL) {
+                            stop_iter = NULL,
+                            smooth_specs = NULL) {
   args <- list(
     batch_size = rlang::enquo(batch_size),
     epochs = rlang::enquo(epochs),
     learn_rate = rlang::enquo(learn_rate),
-    stop_iter = rlang::enquo(stop_iter)
+    stop_iter = rlang::enquo(stop_iter),
+    smooth_specs = rlang::enquo(smooth_specs)
   )
 
   parsnip::new_model_spec(
