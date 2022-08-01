@@ -275,8 +275,6 @@ wand_bridge <- function(processed,
     smooth_specs[[i]]$blueprint <- smooth_specs[[i]]$processed$blueprint
     smooth_specs[[i]]$processed <- NULL
     smooth_specs[[i]]$torch_module <- class(smooth_specs[[i]]$torch_module)[1]
-    smooth_specs[[i]]$torch_module_parameters <- smooth_specs[[i]]$torch_module_parameters
-    smooth_specs[[i]]$n_smooth_features <- NULL
   }
 
   new_wand(
