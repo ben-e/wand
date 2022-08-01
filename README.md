@@ -18,6 +18,8 @@ interpretation. This package gets its name from the type of network it
 implements: **w**ide **an**d **d**eep networks combine linear features
 (wide) with feature embeddings (deep).
 
+<img src="man/figures/README-unnamed-chunk-2-1.png" width="100%" />
+
 `wand` draws heavy inspiration from the `mgcv` and `brulee` packages.
 
 ## Installation
@@ -62,7 +64,7 @@ predict(wand_fit, bivariate_test, type = "prob") %>%
 #> # A tibble: 1 × 3
 #>   .metric .estimator .estimate
 #>   <chr>   <chr>          <dbl>
-#> 1 roc_auc binary         0.777
+#> 1 roc_auc binary         0.775
 ```
 
 Using `wand` with the `tidymodels` ecosystem:
@@ -119,7 +121,7 @@ smooth_contours[[1]] +
   coord_fixed()
 ```
 
-<img src="man/figures/README-unnamed-chunk-5-1.png" width="100%" />
+<img src="man/figures/README-unnamed-chunk-6-1.png" width="100%" />
 
 ## Feature Roadmap
 

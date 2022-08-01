@@ -22,6 +22,25 @@ knitr::opts_chunk$set(
 
 `wand` is an R package which implements generalized additive models (GAMs) using `torch` as a backend, allowing users to fit semi-interpretable models using tools from the deep learning world. In addition to its GAM implementation, `wand` also provides tools for model interpretation. This package gets its name from the type of network it implements: **w**ide **an**d **d**eep networks combine linear features (wide) with feature embeddings (deep).
 
+```{r, echo = FALSE, fig.height = 6, fig.width = 9}
+suppressPackageStartupMessages({
+  library(dplyr)
+  library(ggraph)
+  library(wand)
+})
+
+wand_fit <- wand(mpg ~ cyl + disp + drat + qsec + vs + am + gear + carb +
+                   s_mlp(hp) + s_mlp(wt) + s_mlp(hp, wt),
+                 data = mtcars)
+
+build_wand_graph(wand_fit) %>% 
+  ggraph(layout = 'kk') +
+  geom_edge_bend(aes(start_cap = label_rect(node1.name),
+                     end_cap = label_rect(node2.name)),
+                 arrow = arrow(length = unit(2, 'mm'))) +
+  geom_node_label(aes(label = name))
+```
+
 `wand` draws heavy inspiration from the `mgcv` and `brulee` packages.
 
 ## Installation
