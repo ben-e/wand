@@ -45,6 +45,7 @@ Using `wand` alone:
 suppressPackageStartupMessages({
   library(wand)
   library(dplyr)
+  library(ggplot2)
   library(parsnip)
   library(recipes)
   library(workflows)
@@ -61,7 +62,7 @@ predict(wand_fit, bivariate_test, type = "prob") %>%
 #> # A tibble: 1 × 3
 #>   .metric .estimator .estimate
 #>   <chr>   <chr>          <dbl>
-#> 1 roc_auc binary         0.731
+#> 1 roc_auc binary         0.777
 ```
 
 Using `wand` with the `tidymodels` ecosystem:
@@ -98,23 +99,24 @@ The `wand` package also includes a few convenience functions for
 inspecting the fitted smooths. Currently, only 1d and 2d smooths are
 supported. Here is an example of a 2d contour.
 
-TODO This is..inconsistent.
-
 ``` r
 # Some synthetic data with a square shape
-df <- tibble(x = rnorm(1000), 
-             y = rnorm(1000), 
-             class = factor((abs(x) > 0.75 | abs(y) > 0.75), 
-                            levels = c(T, F), 
-                            labels = c("out", "in")))
+df <- expand.grid(x = seq(-2, 2, 0.1), 
+                  y = seq(-2, 2, 0.1)) %>% 
+  mutate(class = factor((abs(x) > 1 | abs(y) > 1), 
+                        levels = c(T, F), 
+                        labels = c("out", "in")))
 
-wand_fit <- wand(class ~ s_mlp(x, y, hidden_units = c(128, 182)),
-                 epochs = 200,
-                 data = df)
+wand_fit <- wand(class ~ s_mlp(x, y), epochs = 25, data = df)
 #> No improvement for the last 5 epochs. Stopping.
 
 smooth_contours <- wand_plot_smooths(wand_fit, df)
-smooth_contours[[1]]
+
+smooth_contours[[1]] +
+  annotate("rect", xmin = -1, xmax = 1, ymin = -1, ymax = 1,
+           fill = alpha("grey", 0), colour = "black", 
+           linetype = "dashed") +
+  coord_fixed()
 ```
 
 <img src="man/figures/README-unnamed-chunk-5-1.png" width="100%" />

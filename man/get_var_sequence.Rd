@@ -4,10 +4,14 @@
 \alias{get_var_sequence}
 \title{Generates an evenly spaced sequence across a variable's values}
 \usage{
-get_var_sequence(var)
+get_var_sequence(var, seq_length = Inf)
 }
 \arguments{
 \item{var}{A variable, numeric or factor.}
+
+\item{seq_length}{An integer giving the maximum number of points in the sequence. If set to \code{inf}
+(the default) then the average spacing between points is used to determine sequence length. If
+\code{var} is non-numeric, then \code{seq_length} is ignored.}
 }
 \value{
 An evenly spaced sequence from \code{var} min to max.

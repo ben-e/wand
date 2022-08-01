@@ -141,17 +141,25 @@ build_wand_graph <- function(wand_fit) {
 #' Generates an evenly spaced sequence across a variable's values
 #'
 #' @param var A variable, numeric or factor.
+#' @param seq_length An integer giving the maximum number of points in the sequence. If set to `inf`
+#'   (the default) then the average spacing between points is used to determine sequence length. If
+#'   `var` is non-numeric, then `seq_length` is ignored.
 #'
 #' @return An evenly spaced sequence from `var` min to max.
-get_var_sequence <- function(var) {
+get_var_sequence <- function(var, seq_length = Inf) {
   if (is.numeric(var)) {
     # TODO this could be smarter, e.g. if there are only a few unique levels
     var <- sort(var)
     var_min <- min(var, na.rm = T)
     var_max <- max(var, na.rm = T)
-    var_spacing <- sapply(2:length(var), \(x) var[x] - var[x - 1])
-    var_spacing <- mean(var_spacing[var_spacing > 0], na.rm = T)
-    var_seq <- seq(from = var_min, to = var_max, by = var_spacing)
+
+    if (is.infinite(seq_length)) {
+      var_spacing <- sapply(2:length(var), \(x) var[x] - var[x - 1])
+      var_spacing <- mean(var_spacing[var_spacing > 0], na.rm = T)
+      var_seq <- seq(from = var_min, to = var_max, by = var_spacing)
+    } else {
+      var_seq <- seq(from = var_min, to = var_max, length.out = seq_length)
+    }
   } else if(is.factor(var)) {
     var_seq <- factor(levels(var), levels(var))
   } else{
@@ -162,8 +170,7 @@ get_var_sequence <- function(var) {
 }
 
 #' @export
-wand_plot_smooths <- function(wand_fit, df) {
-  # TODO
+wand_plot_smooths <- function(wand_fit, df, seq_length = 250) {
   # Get features in each smooth
   smooth_features <- lapply(wand_fit$smooth_specs, \(x) names(x$blueprint$ptypes$predictors))
   outcome <- names(wand_fit$blueprint$ptypes$outcomes)[1]
@@ -173,8 +180,6 @@ wand_plot_smooths <- function(wand_fit, df) {
   else if (wand_fit$mode == "regression")
     prediction_mode <- "numeric"
 
-  # Currently, we can support smooths with a max of two features, but maybe I can look into
-  # surface plots
   if (max(sapply(smooth_features, length)) > 2) {
     rlang::abort("Only smooths with a max of two features can currently be plotted.")
   }
@@ -182,13 +187,17 @@ wand_plot_smooths <- function(wand_fit, df) {
   # plot each smooth
   smooth_plots <- list()
   for (smooth in smooth_features) {
-    var_seq <- expand.grid(lapply(seq_along(smooth), \(x) get_var_sequence(pull(df, smooth[x]))))
+    var_seq <- expand.grid(lapply(seq_along(smooth),
+                                  # max of 1000 points per variable
+                                  \(x) get_var_sequence(pull(df, smooth[x]), seq_length)))
     colnames(var_seq) <- smooth
 
     mean_df <- df %>%
       dplyr::select(-dplyr::all_of(c(smooth, outcome))) %>%
-      # TODO doesn't handle factor columns :)
-      dplyr::summarise(dplyr::across(dplyr::everything(), mean))
+      # mean for numeric, mode for factor
+      dplyr::summarise(dplyr::across(where(is.numeric), mean),
+                       dplyr::across(where(is.factor), \(x) names(which.max(table(x)))[1]),
+                       dplyr::across(where(is.character), \(x) names(which.max(table(x)))[1]))
 
     pdp_df <- cbind(mean_df, var_seq)
 
