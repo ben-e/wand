@@ -29,7 +29,7 @@ wand_mlp_module <- torch::nn_module(
     # hidden layers and output
     for (i in seq_along(hidden_units)[-1]) {
       layers[[length(layers) + 1]] <- torch::nn_linear(hidden_units[i - 1], hidden_units[i])
-      if (i < n_layers)
+      # if (i < n_layers)
         layers[[length(layers) + 1]] <- torch::nn_selu()
     }
 

@@ -138,7 +138,7 @@ if (torch::torch_is_installed()) {
   library(recipes)
   rec <- recipe(mpg ~ ., mtcars)
   rec <- step_log(rec, disp)
-  mod3 <- wand(rec, mtcars, smooth_specs = list(hp = s_mlp(hp)))
+  mod3 <- wand(rec, mtcars, smooth_specs = list(hp = s_mlp(hp), disp = s_mlp(disp)))
 }
 }
 }

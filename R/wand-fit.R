@@ -61,7 +61,7 @@
 #'   library(recipes)
 #'   rec <- recipe(mpg ~ ., mtcars)
 #'   rec <- step_log(rec, disp)
-#'   mod3 <- wand(rec, mtcars, smooth_specs = list(hp = s_mlp(hp)))
+#'   mod3 <- wand(rec, mtcars, smooth_specs = list(hp = s_mlp(hp), disp = s_mlp(disp)))
 #' }
 #' }
 #' @export
@@ -274,18 +274,17 @@ wand_bridge <- function(processed,
   for (i in seq_along(smooth_specs)) {
     smooth_specs[[i]]$blueprint <- smooth_specs[[i]]$processed$blueprint
     smooth_specs[[i]]$processed <- NULL
-    smooth_specs[[i]]$torch_module <- NULL
-    smooth_specs[[i]]$torch_module_parameters <- NULL
+    smooth_specs[[i]]$torch_module <- class(smooth_specs[[i]]$torch_module)[1]
+    smooth_specs[[i]]$torch_module_parameters <- smooth_specs[[i]]$torch_module_parameters
     smooth_specs[[i]]$n_smooth_features <- NULL
   }
 
   new_wand(
     model_obj = fit$model_obj,
     best_model_params = fit$best_model_params,
-    loss = fit$loss,
-    validation_loss = fit$validation_loss,
     smooth_specs = smooth_specs,
     training_params = fit$training_params,
+    training_results = fit$training_results,
     outcome_info = fit$outcome_info,
     mode = fit$mode,
     blueprint = processed$blueprint
@@ -413,6 +412,7 @@ wand_impl <- function(linear_predictors,
   val_loss_current <- NA
   loss_tol <- 5
   consec_iters_without_improvement <- 0
+  best_epoch <- 0
 
   # Iterate over epochs
   for (epoch in 1:epochs) {
@@ -440,6 +440,7 @@ wand_impl <- function(linear_predictors,
 
       if (val_loss_current < loss_min) {
         loss_min <- val_loss_current
+        best_epoch <- epoch
         consec_iters_without_improvement <- 0
         best_model_params <- lapply(model$state_dict(), torch::as_array)
       } else {
@@ -448,6 +449,7 @@ wand_impl <- function(linear_predictors,
     } else {
       if (loss_current < loss_min) {
         loss_min <- loss_current
+        best_epoch <- epoch
         consec_iters_without_improvement <- 0
         best_model_params <- lapply(model$state_dict(), torch::as_array)
       } else {
@@ -476,13 +478,15 @@ wand_impl <- function(linear_predictors,
   list(
     model_obj = dehydrate_model(model),
     best_model_params = best_model_params,
-    loss = loss_vec,
-    validation_loss = val_loss_vec,
     training_params = list(batch_size = batch_size,
                            validation_prop = validation_prop,
                            epochs = epochs,
                            learn_rate = learn_rate,
                            stop_iter = stop_iter),
+    training_results = list(loss = loss_vec,
+                            validation_loss = val_loss_vec,
+                            best_epoch = best_epoch,
+                            last_epoch = epoch),
     outcome_info = outcome_info,
     mode = mode
   )

@@ -61,7 +61,7 @@ predict(wand_fit, bivariate_test, type = "prob") %>%
 #> # A tibble: 1 × 3
 #>   .metric .estimator .estimate
 #>   <chr>   <chr>          <dbl>
-#> 1 roc_auc binary         0.750
+#> 1 roc_auc binary         0.731
 ```
 
 Using `wand` with the `tidymodels` ecosystem:
@@ -93,6 +93,31 @@ predict(wand_wf_fit, bivariate_test, type = "prob") %>%
 #>   <chr>   <chr>          <dbl>
 #> 1 roc_auc binary         0.796
 ```
+
+The `wand` package also includes a few convenience functions for
+inspecting the fitted smooths. Currently, only 1d and 2d smooths are
+supported. Here is an example of a 2d contour.
+
+TODO This is..inconsistent.
+
+``` r
+# Some synthetic data with a square shape
+df <- tibble(x = rnorm(1000), 
+             y = rnorm(1000), 
+             class = factor((abs(x) > 0.75 | abs(y) > 0.75), 
+                            levels = c(T, F), 
+                            labels = c("out", "in")))
+
+wand_fit <- wand(class ~ s_mlp(x, y, hidden_units = c(128, 182)),
+                 epochs = 200,
+                 data = df)
+#> No improvement for the last 5 epochs. Stopping.
+
+smooth_contours <- wand_plot_smooths(wand_fit, df)
+smooth_contours[[1]]
+```
+
+<img src="man/figures/README-unnamed-chunk-5-1.png" width="100%" />
 
 ## Feature Roadmap
 
