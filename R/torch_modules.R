@@ -8,7 +8,7 @@
 #'
 #' @details
 #'
-#' This module creates a very simple multilayer perceptron (mlp). The mlp uses the `torch::nn_selu`
+#' This module creates a very simple multilayer perceptron (mlp). The mlp uses the `torch::nn_relu`
 #' activation function, no dropout, and no batchnormalization. Note that the activation function is
 #' applied to the returned features.
 #'
@@ -22,7 +22,7 @@ wand_mlp_module <- torch::nn_module(
 
     # input layer
     layers[[1]] <- torch::nn_linear(n_features, hidden_units[1])
-    layers[[2]] <- torch::nn_selu()
+    layers[[2]] <- torch::nn_relu()
 
     n_layers <- length(hidden_units)
 
@@ -30,7 +30,7 @@ wand_mlp_module <- torch::nn_module(
     for (i in seq_along(hidden_units)[-1]) {
       layers[[length(layers) + 1]] <- torch::nn_linear(hidden_units[i - 1], hidden_units[i])
       if (i < n_layers)
-        layers[[length(layers) + 1]] <- torch::nn_selu()
+        layers[[length(layers) + 1]] <- torch::nn_relu()
     }
 
     # model

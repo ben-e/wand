@@ -45,54 +45,127 @@ Using `wand` alone:
 suppressPackageStartupMessages({
   library(wand)
   library(dplyr)
+  library(ggplot2)
+  library(ggraph)
   library(parsnip)
   library(recipes)
   library(workflows)
   library(yardstick)
 })
 
-data(bivariate, package = "modeldata")
+set.seed(4242)
 
-wand_fit <- wand(Class ~ log(A) + s_mlp(log(B), hidden_units = c(16, 16, 8)),
-                 data = bivariate_train)
-predict(wand_fit, bivariate_test, type = "prob") %>% 
-  bind_cols(bivariate_test) %>% 
-  roc_auc(Class, .pred_Two)
+# Generate some synthetic data with a square shape and an uncorrelated feature
+df <- expand.grid(x = seq(-2, 2, 0.1), 
+                  y = seq(-2, 2, 0.1)) %>% 
+  mutate(z = rnorm(n()),
+         class = factor((abs(x) > 1 | abs(y) > 1), 
+                        levels = c(T, F), 
+                        labels = c("out", "in")))
+
+# Fit a model with one linear term and one smooth interaction
+wand_fit <- wand(class ~ z + s_mlp(x, y),
+                 data = df)
+
+predict(wand_fit, df, type = "prob") %>% 
+  bind_cols(df) %>% 
+  roc_auc(class, .pred_out)
 #> # A tibble: 1 × 3
 #>   .metric .estimator .estimate
 #>   <chr>   <chr>          <dbl>
-#> 1 roc_auc binary         0.750
+#> 1 roc_auc binary         0.918
 ```
 
 Using `wand` with the `tidymodels` ecosystem:
 
 ``` r
-wand_recipe <- recipe(Class ~ A + B, 
-                      data = bivariate_train) %>% 
-  step_log(all_numeric_predictors())
+wand_recipe <- recipe(class ~ x + y + z, 
+                      data = df)
 
-wand_model_spec <- nn_additive_mod(
-  mode = "classification", 
-  engine = "wand",
-  smooth_specs = list(B = s_mlp(B, hidden_units = c(16, 16, 8)))
-  # note that `B` in this smooth will already have been log transformed
-)
+wand_model_spec <- nn_additive_mod("classification") %>% 
+  set_engine(engine = "wand", 
+             # note that all recipe steps are carried out before smoothing
+             smooth_specs = list(xy = s_mlp(x, y)))
 
 wand_wf <- workflow() %>% 
   add_recipe(wand_recipe) %>% 
   add_model(wand_model_spec)
 
-wand_wf_fit <- fit(wand_wf, bivariate_train)
+wand_wf_fit <- fit(wand_wf, df)
 
-predict(wand_wf_fit, bivariate_test, type = "prob") %>% 
-  bind_cols(bivariate_test) %>% 
-  # TODO need to make sure event_level is actually respected by the model
-  roc_auc(Class, .pred_One)
+predict(wand_wf_fit, df, type = "prob") %>% 
+  bind_cols(df) %>% 
+  roc_auc(class, .pred_out)
 #> # A tibble: 1 × 3
 #>   .metric .estimator .estimate
 #>   <chr>   <chr>          <dbl>
-#> 1 roc_auc binary         0.796
+#> 1 roc_auc binary         0.914
 ```
+
+The `wand` package also includes a few convenience functions for
+inspecting the fitted models.
+
+First, we can take a look at the model graph to understand how data
+flows through the model. Note that `wand` only supplies a function to
+build a graph, the user can then use any `tbl_graph` or `igraph`
+compatible plotting method; I’ll use `ggraph` for this example.
+
+``` r
+wand_wf_fit %>% 
+  extract_fit_engine() %>% 
+  build_wand_graph() %>% 
+  ggraph(layout = 'kk') +
+  geom_edge_bend(aes(start_cap = label_rect(node1.name),
+                     end_cap = label_rect(node2.name)),
+                 arrow = arrow(length = unit(2, 'mm'))) +
+  geom_node_label(aes(label = name))
+```
+
+<img src="man/figures/README-unnamed-chunk-5-1.png" width="100%" />
+
+Next, we should take a look at the model’s training loss to look for any
+hints of overfitting.
+
+``` r
+wand_wf_fit %>% 
+  extract_fit_engine() %>% 
+  wand_plot_loss()
+```
+
+<img src="man/figures/README-unnamed-chunk-6-1.png" width="100%" />
+
+Now we can actually inspect the results of model training by looking at
+coefficients for linear terms.
+
+``` r
+# TODO `coefs` function needs rownames :)
+wand_wf_fit %>% 
+  extract_fit_engine() %>% 
+  coef()
+#>                     out           in
+#> (Intercept) -0.06551073 -0.003939368
+#>              0.10245648  0.002335455
+```
+
+Finally, for smooth terms, we can plot the actual smooth functions. In
+this case, the only smooth is two dimensional so we will plot a surface.
+The `wand_plot_smooths` function returns a list with an entry for each
+smooth, in this case we’re only interested in the first and only plot.
+
+``` r
+# Also, is it worth noting that softmax probabilities aren't really..well calibrated?
+smooth_contours <- wand_wf_fit %>% 
+  extract_fit_engine() %>%
+  wand_plot_smooths(df)
+
+smooth_contours[[1]] +
+  annotate("rect", xmin = -1, xmax = 1, ymin = -1, ymax = 1,
+           fill = alpha("grey", 0), colour = "black", 
+           linetype = "dashed") +
+  coord_fixed()
+```
+
+<img src="man/figures/README-unnamed-chunk-8-1.png" width="100%" />
 
 ## Feature Roadmap
 

@@ -19,7 +19,7 @@ A multilayer perceptron \code{torch::nn_module} module
 A multilayer perceptron \code{torch::nn_module} module
 }
 \details{
-This module creates a very simple multilayer perceptron (mlp). The mlp uses the \code{torch::nn_selu}
+This module creates a very simple multilayer perceptron (mlp). The mlp uses the \code{torch::nn_relu}
 activation function, no dropout, and no batchnormalization. Note that the activation function is
 applied to the returned features.
 }

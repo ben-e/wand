@@ -68,14 +68,16 @@ test_that("wand fits with integer and double outcomes", {
 test_that("`wand` stops early when no improvement happens", {
   expect_length(
     na.omit(
-      wand(bi_reg_rec, bivariate_train, learn_rate = 0, stop_iter = 5, validation_prop = 0)$loss
+      wand(bi_reg_rec, bivariate_train,
+           learn_rate = 0, stop_iter = 5, validation_prop = 0)$training_results$loss
       ),
     6
   )
 
   expect_length(
     na.omit(
-      wand(bi_reg_rec, bivariate_train, learn_rate = 0, stop_iter = 5, validation_prop = 0.5)$loss
+      wand(bi_reg_rec, bivariate_train,
+           learn_rate = 0, stop_iter = 5, validation_prop = 0.5)$training_results$loss
     ),
     6
   )

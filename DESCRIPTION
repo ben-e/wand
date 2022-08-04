@@ -22,10 +22,13 @@ Imports:
 Suggests: 
     covr,
     dials,
+    ggplot2,
     modeldata,
     recipes,
     rsample,
+    scales,
     testthat (>= 3.0.0),
+    tidygraph,
     tune,
     workflows
 Config/testthat/edition: 3
