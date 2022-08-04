@@ -4,10 +4,12 @@
 \alias{coef.wand}
 \title{Extract model coefficients}
 \usage{
-\method{coef}{wand}(wand_fit, ...)
+\method{coef}{wand}(object, ...)
 }
 \arguments{
-\item{wand_fit}{A fitted \code{wand} model.}
+\item{object}{A fitted \code{wand} model.}
+
+\item{...}{Currently unused.}
 }
 \value{
 A matrix of the final linear layer's weights and biases. Note that classification models

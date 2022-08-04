@@ -1,3 +1,7 @@
+# Recommended here: https://github.com/r-lib/tidyselect/issues/201
+# May be deprecated soon
+utils::globalVariables("where")
+
 #' Plot model loss by epoch
 #'
 #' @param wand_fit A fitted `wand` model.
@@ -98,6 +102,15 @@ get_var_sequence <- function(var, seq_length = Inf) {
   var_seq
 }
 
+#' Plot smooth functions from a wand model
+#'
+#' @param wand_fit A fitted `wand` model.
+#' @param df A dataframe used to determine feature ranges and spacing. It is recommended to use the
+#'   training dataframe.
+#' @param seq_length The maximum number of points used when plotting each smooth.
+#'
+#' @return A list where each entry is a ggplot of a smooth function.
+#'
 #' @export
 wand_plot_smooths <- function(wand_fit, df, seq_length = 250) {
   # preproc data?
@@ -123,19 +136,20 @@ wand_plot_smooths <- function(wand_fit, df, seq_length = 250) {
   for (smooth in smooth_features) {
     var_seq <- expand.grid(lapply(seq_along(smooth),
                                   # max of 1000 points per variable
-                                  \(x) get_var_sequence(pull(df, smooth[x]), seq_length)))
+                                  \(x) get_var_sequence(dplyr::pull(df, smooth[x]), seq_length)))
     colnames(var_seq) <- smooth
 
-    mean_df <- df %>%
-      dplyr::select(-dplyr::all_of(smooth)) %>%
-      # mean for numeric, mode for factor
-      dplyr::summarise(dplyr::across(where(is.numeric), mean),
-                       dplyr::across(where(is.factor), \(x) names(which.max(table(x)))[1]),
-                       dplyr::across(where(is.character), \(x) names(which.max(table(x)))[1]))
+    mean_df <- dplyr::select(df, -dplyr::all_of(smooth))
+    # mean for numeric, mode for factor
+    mean_df <- dplyr::summarise(
+      mean_df, dplyr::across(where(is.numeric), mean),
+      dplyr::across(where(is.factor), \(x) names(which.max(table(x)))[1]),
+      dplyr::across(where(is.character), \(x) names(which.max(table(x)))[1])
+    )
 
     pdp_df <- cbind(mean_df, var_seq)
 
-    pdp_df$.pred <- predict(wand_fit, new_data = pdp_df, type = prediction_mode)[[1]]
+    pdp_df$.pred <- stats::predict(wand_fit, new_data = pdp_df, type = prediction_mode)[[1]]
 
     if (length(smooth) == 1) {
       pl <- ggplot2::ggplot(pdp_df, ggplot2::aes_string(x = smooth[1], y = ".pred")) +
@@ -219,21 +233,27 @@ build_wand_graph <- function(wand_fit) {
 
 #' Extract model coefficients
 #'
-#' @param wand_fit A fitted `wand` model.
+#' @param object A fitted `wand` model.
+#' @param ... Currently unused.
 #'
 #' @return A matrix of the final linear layer's weights and biases. Note that classification models
 #'   use a softmax activation, which returns one column per class.
 #'
 #' @export
-coef.wand <- function(wand_fit, ...) {
-  model <- hydrate_model(wand_fit$model_obj)
+coef.wand <- function(object, ...) {
+  model <- hydrate_model(object$model_obj)
   model_weight <- torch::as_array(model$linear_module$state_dict()[[1]])
   model_bias <- torch::as_array(model$linear_module$state_dict()[[2]])
 
   # Note that the weights vector includes all the weights on the smoothed features, we don't
   # actually want those, so remove them.
   n_features <- ncol(model_weight)
-  n_smooth_features <- sum(sapply(wand_fit$smooth_specs, \(x) x$n_smooth_features))
+  if (length(object$smooth_specs) > 0) {
+    n_smooth_features <- sum(sapply(object$smooth_specs, \(x) x$n_smooth_features))
+  } else {
+    n_smooth_features <- 0
+  }
+
   # The wand module starts with linear features
   if ((n_features - n_smooth_features) > 0) {
     model_weight <- model_weight[ , 1:(n_features - n_smooth_features), drop = F]
@@ -244,8 +264,8 @@ coef.wand <- function(wand_fit, ...) {
   # TODO This should have named rows and cols
   model_coefs <- rbind(model_bias, t(model_weight))
   rownames(model_coefs) <- c("(Intercept)", rep("", nrow(model_coefs) - 1))
-  if (wand_fit$mode == "classification")
-    colnames(model_coefs) <- levels(wand_fit$blueprint$ptypes$outcomes[[1]])
+  if (object$mode == "classification")
+    colnames(model_coefs) <- levels(object$blueprint$ptypes$outcomes[[1]])
 
   model_coefs
 }

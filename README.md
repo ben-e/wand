@@ -123,7 +123,8 @@ wand_wf_fit %>%
 
 <img src="man/figures/README-unnamed-chunk-5-1.png" width="100%" />
 
-Next, we should take a look at the model’s training loss.
+Next, we should take a look at the model’s training loss to look for any
+hints of overfitting.
 
 ``` r
 wand_wf_fit %>% 
@@ -146,12 +147,13 @@ wand_wf_fit %>%
 #>              0.10245648  0.002335455
 ```
 
-Finally, for smooth terms, we can plot the smooths. In this case, the
-only smooth is two dimensional. The `wand_plot_smooths` function returns
-a list with an entry for each smooth, in this case we’re only interested
-in the first and only.
+Finally, for smooth terms, we can plot the actual smooth functions. In
+this case, the only smooth is two dimensional so we will plot a surface.
+The `wand_plot_smooths` function returns a list with an entry for each
+smooth, in this case we’re only interested in the first and only plot.
 
 ``` r
+# Also, is it worth noting that softmax probabilities aren't really..well calibrated?
 smooth_contours <- wand_wf_fit %>% 
   extract_fit_engine() %>%
   wand_plot_smooths(df)
