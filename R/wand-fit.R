@@ -241,7 +241,7 @@ wand_bridge <- function(processed,
                         ...) {
 
   # If a term is used in a smooth, remove it from the linear predictors
-  # TODO For XY and recipe, if a user does something like s_mlp( ~ log(z)) then z will be included
+  # TODO For XY and recipe, if a user does something like s_mlp(log(z)) then z will be included
   # as a linear feature and log(z) will be included as a smooth feature. What do? Warn users they
   # should preproc transformations like this for these interfaces?
   smooth_features_intersect <- intersect(unique(unlist(lapply(smooth_specs, \(i) i$features))),
@@ -255,6 +255,7 @@ wand_bridge <- function(processed,
   if (!rlang::is_missing(smooth_specs) && is.null(names(smooth_specs)) && length(smooth_specs) > 0)
     names(smooth_specs) <- paste0("smooth_", 1:length(smooth_specs))
 
+  # Fit the model
   fit <- wand_impl(
     linear_predictors,
     smooth_specs,
@@ -270,22 +271,28 @@ wand_bridge <- function(processed,
     verbose = verbose
   )
 
-  # The constructor doesn't need the full smooth spec, just enough to make predictions
-  for (i in seq_along(smooth_specs)) {
-    smooth_specs[[i]]$blueprint <- smooth_specs[[i]]$processed$blueprint
-    smooth_specs[[i]]$processed <- NULL
-    smooth_specs[[i]]$torch_module <- class(smooth_specs[[i]]$torch_module)[1]
-  }
+  # Keep some information about the predictors, useful for post-fit model inspection
+  predictor_info <- list(
+    linear_predictors = lapply(linear_predictors, summarise_predictor),
+    smooth_predictors = lapply(
+      smooth_specs,
+      \(x) list(torch_module_name = class(x$torch_module)[1],
+                torch_module_parameters = x$torch_module_parameters,
+                n_smooth_features = x$n_smooth_features,
+                predictors = lapply(x$processed$predictors, summarise_predictor))
+    )
+  )
 
   new_wand(
     model_obj = fit$model_obj,
     best_model_params = fit$best_model_params,
-    smooth_specs = smooth_specs,
     training_params = fit$training_params,
     training_results = fit$training_results,
     outcome_info = fit$outcome_info,
+    predictor_info = predictor_info,
     mode = fit$mode,
-    blueprint = processed$blueprint
+    blueprint = processed$blueprint,
+    smooth_blueprints = lapply(smooth_specs, \(x) x$processed$blueprint)
   )
 }
 
@@ -347,6 +354,7 @@ wand_impl <- function(linear_predictors,
 
     # scale the outcome
     if (mode == "regression") {
+      # note that the scaling here is _not_ using the validation data
       outcome_info <- list(mean = mean(outcome), sd = stats::sd(outcome))
       outcome <- scale_y(outcome, outcome_info)
       outcome_val <- scale_y(outcome_val, outcome_info)

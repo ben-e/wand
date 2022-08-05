@@ -82,7 +82,7 @@ extract_smooths <- function(formula) {
     if (grepl("^s_", term)) {
       # get the actual smooth specification by evaluating the s function and save
       smooth_specs[[length(smooth_specs) + 1]] <- eval(parse(text = term))
-      # update formula to remove the smooth
+      # update formula to remove the smooth, but keep the term
       formula <- stats::update.formula(
         formula,
         paste0(c(
@@ -97,3 +97,37 @@ extract_smooths <- function(formula) {
   list(formula = formula,
        smooth_specs = smooth_specs)
 }
+
+#' Get average 1d distance between points
+#'
+#' @param var A vector.
+#'
+#' @return If `var` is numeric, then this returns the average distance between `var` points. If
+#'   `var` is a character or factor, then `get_var_spacing` just returns the unique levels.
+get_var_spacing <- function(var) {
+  if (is.numeric(var)) {
+    var <- sort(unique(var))
+    var_spacing <- sapply(2:length(var), \(x) var[x] - var[x - 1])
+    return(mean(var_spacing))
+  } else if (is.factor(var)) {
+    return(levels(var))
+  } else if (is.character(var)) {
+    return(sort(unique(var)))
+  } else {
+    rlang::abort("`var` is not a valid type.")
+  }
+}
+
+#' Get summary statistics for a model predictor
+#'
+#' @param x A vector.
+#'
+#' @return A named list of summary statistics.
+summarise_predictor <- function(x) {
+  list(mean = ifelse(is.numeric(x), mean(x), NA_real_),
+       sd = ifelse(is.numeric(x), stats::sd(x), NA_real_),
+       min = ifelse(is.numeric(x), min(x), NA_real_),
+       max = ifelse(is.numeric(x), max(x), NA_real_),
+       spacing = get_var_spacing(x))
+}
+

@@ -176,26 +176,11 @@ wand_plot_smooths <- function(wand_fit, df, seq_length = 250) {
 #'
 #' @export
 build_wand_graph <- function(wand_fit) {
-  # Get all features
-  features <- names(wand_fit$blueprint$ptypes$predictors)
-
-  # Get smooth features and smooth modules
-  smooth_nodes <- lapply(wand_fit$smooth_specs, \(x) {
-    paste0(x$torch_module, "\n",
-           "features: ", paste0(x$features, collapse = ", "), "\n",
-           paste0(names(x$torch_module_parameters), ": ",
-                  as.character(x$torch_module_parameters),
-                  collapse = "\n")
-    )
-  })
-  smooth_features <- lapply(wand_fit$smooth_specs, \(x) names(x$blueprint$ptypes$predictors))
-  names(smooth_features) <- smooth_nodes
-
-  # Linear features
-  linear_features <- setdiff(features, unlist(smooth_features))
-
+  # Get feature names
+  linear_features <- names(wand_fit$predictor_info$linear_predictors)
+  smooth_features <- unlist(lapply(wand_fit$predictor_info$smooth_predictors,
+                                   \(x) names(x$predictors)))
   # Get outcome
-  # If the outcome is a factor, then we care about the levels
   if (is.factor(wand_fit$blueprint$ptypes$outcomes[[1]])) {
     outcomes <- levels(wand_fit$blueprint$ptypes$outcomes[[1]])
     outcomes <- paste0("Class: ", outcomes)
@@ -205,13 +190,27 @@ build_wand_graph <- function(wand_fit) {
   }
   outcomes <- paste0("Predicted ", outcomes)
 
-  # Create nodes
-  nodes <- data.frame(name = c(features, names(smooth_features), outcomes, "linear_layer"))
+  # Get smooth modules
+  smooth_modules <- sapply(wand_fit$predictor_info$smooth_predictors, \(x) {
+    paste0(#"features: ", paste0(names(x$predictors), collapse = ", "), "\n",
+           "torch module: ", x$torch_module_name, "\n",
+           "torch module parameters: \n",
+           paste0(names(x$torch_module_parameters), ": ",
+                  as.character(x$torch_module_parameters),
+                  collapse = "\n")
+    )
+  })
+  smooth_modules <- paste0(paste0(names(smooth_modules), "\n"), smooth_modules)
+
+  # Create nodes, add linear layer
+  nodes <- data.frame(name = c(linear_features, smooth_features,
+                               smooth_modules, "linear_layer", outcomes))
 
   # Create edges
   smooth_edges <- data.frame(
-    from = unlist(smooth_features),
-    to = rep(names(smooth_features), sapply(smooth_features, length))
+    from = smooth_features,
+    to = rep(smooth_modules,
+             times = sapply(wand_fit$predictor_info$smooth_predictors, \(x) length(x$predictors)))
   )
   linear_layer_edges <- data.frame(
     from = c(smooth_edges$to, linear_features),
@@ -248,8 +247,9 @@ coef.wand <- function(object, ...) {
   # Note that the weights vector includes all the weights on the smoothed features, we don't
   # actually want those, so remove them.
   n_features <- ncol(model_weight)
-  if (length(object$smooth_specs) > 0) {
-    n_smooth_features <- sum(sapply(object$smooth_specs, \(x) x$n_smooth_features))
+  if (length(object$predictor_info$smooth_predictors) > 0) {
+    n_smooth_features <- sum(sapply(object$predictor_info$smooth_predictors,
+                                    \(x) x$n_smooth_features))
   } else {
     n_smooth_features <- 0
   }
