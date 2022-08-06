@@ -71,65 +71,46 @@ wand_plot_loss <- function(wand_fit, show_best_epoch = T, show_early_stopping = 
   pl
 }
 
-#' Generates an evenly spaced sequence across a variable's values
-#'
-#' @param var A variable, numeric or factor.
-#' @param seq_length An integer giving the maximum number of points in the sequence. If set to `inf`
-#'   (the default) then the average spacing between points is used to determine sequence length. If
-#'   `var` is non-numeric, then `seq_length` is ignored.
-#'
-#' @return An evenly spaced sequence from `var` min to max.
-get_var_sequence <- function(var, seq_length = Inf) {
-  if (is.numeric(var)) {
-    # TODO this could be smarter, e.g. if there are only a few unique levels
-    var <- sort(var)
-    var_min <- min(var, na.rm = T)
-    var_max <- max(var, na.rm = T)
-
-    if (is.infinite(seq_length)) {
-      var_spacing <- sapply(2:length(var), \(x) var[x] - var[x - 1])
-      var_spacing <- mean(var_spacing[var_spacing > 0], na.rm = T)
-      var_seq <- seq(from = var_min, to = var_max, by = var_spacing)
-    } else {
-      var_seq <- seq(from = var_min, to = var_max, length.out = seq_length)
-    }
-  } else if(is.factor(var)) {
-    var_seq <- factor(levels(var), levels(var))
-  } else{
-    rlang::abort("`get_var_sequence` is not supported for argument `var`'s type.")
-  }
-
-  var_seq
-}
-
 #' Plot smooth functions from a wand model
 #'
 #' @param wand_fit A fitted `wand` model.
-#' @param df A dataframe used to determine feature ranges and spacing. It is recommended to use the
-#'   training dataframe.
-#' @param seq_length The maximum number of points used when plotting each smooth.
+#' @param seq_length The maximum number of points used when plotting each smooth. If the smooth is
+#'   2d, this represents the number of unique points used for each axis, such that the total number
+#'   of points is `seq_length*seq_length`.
 #'
-#' @return A list where each entry is a ggplot of a smooth function.
+#' @return A list where each entry is a ggplot of a smooth function. Note that smooths are plotted
+#' after any pre-processing.
 #'
 #' @export
-wand_plot_smooths <- function(wand_fit, df, seq_length = 250) {
-  # preproc data?
-
-  # Get features in each smooth
-  smooth_features <- lapply(wand_fit$smooth_specs, \(x) names(x$blueprint$ptypes$predictors))
+wand_plot_smooths <- function(wand_fit, seq_length = 250) {
+  # Get outcome name
   outcome <- names(wand_fit$blueprint$ptypes$outcomes)[1]
 
-  # TODO How should preprocessing be handled? If a user specifies y ~ s(log(x)) it seems like the
-  # smooth should be plotted on the log scale, right?
-
-  if (wand_fit$mode == "classification")
+  if (wand_fit$mode == "classification") {
     prediction_mode <- "prob"
-  else if (wand_fit$mode == "regression")
+  } else if (wand_fit$mode == "regression") {
     prediction_mode <- "numeric"
+  }
 
   if (max(sapply(smooth_features, length)) > 2) {
     rlang::abort("Only smooths with a max of two features can currently be plotted.")
   }
+
+  # TODO build a df with the mean of all predictors?
+  # this is all molded data.., but if we feed through predict it's going to get forged again, so huh
+  # I could use the predict bridge function directly, but I'd rather not.
+
+  smooth_predictor_means <- lapply(wand_fit$predictor_info$smooth_predictors,
+                                   \(x) sapply(x$predictors, \(y) y$mean))
+  names(smooth_predictor_means) <- NULL
+  smooth_predictor_means <- unlist(smooth_predictor_means)
+  base_df <- dplyr::as_tibble(as.list(c(sapply(wand_fit$predictor_info$linear_predictors, \(x) x$mean),
+                                        smooth_predictor_means)))
+
+
+  lapply(wand_fit$predictor_info$smooth_predictors, \(smooth_predictor) {
+
+  })
 
   # plot each smooth
   smooth_plots <- list()
@@ -193,11 +174,11 @@ build_wand_graph <- function(wand_fit) {
   # Get smooth modules
   smooth_modules <- sapply(wand_fit$predictor_info$smooth_predictors, \(x) {
     paste0(#"features: ", paste0(names(x$predictors), collapse = ", "), "\n",
-           "torch module: ", x$torch_module_name, "\n",
-           "torch module parameters: \n",
-           paste0(names(x$torch_module_parameters), ": ",
-                  as.character(x$torch_module_parameters),
-                  collapse = "\n")
+      "torch module: ", x$torch_module_name, "\n",
+      "torch module parameters: \n",
+      paste0(names(x$torch_module_parameters), ": ",
+             as.character(x$torch_module_parameters),
+             collapse = "\n")
     )
   })
   smooth_modules <- paste0(paste0(names(smooth_modules), "\n"), smooth_modules)
@@ -261,9 +242,8 @@ coef.wand <- function(object, ...) {
     model_weight <- model_weight[ , 0, drop = F]
   }
 
-  # TODO This should have named rows and cols
   model_coefs <- rbind(model_bias, t(model_weight))
-  rownames(model_coefs) <- c("(Intercept)", rep("", nrow(model_coefs) - 1))
+  rownames(model_coefs) <- c("(Intercept)", names(object$predictor_info$linear_predictors))
   if (object$mode == "classification")
     colnames(model_coefs) <- levels(object$blueprint$ptypes$outcomes[[1]])
 
