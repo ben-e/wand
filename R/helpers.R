@@ -98,36 +98,58 @@ extract_smooths <- function(formula) {
        smooth_specs = smooth_specs)
 }
 
-#' Get average 1d distance between points
-#'
-#' @param var A vector.
-#'
-#' @return If `var` is numeric, then this returns the average distance between `var` points. If
-#'   `var` is a character or factor, then `get_var_spacing` just returns the unique levels.
-get_var_spacing <- function(var) {
-  if (is.numeric(var)) {
-    var <- sort(unique(var))
-    var_spacing <- sapply(2:length(var), \(x) var[x] - var[x - 1])
-    return(mean(var_spacing))
-  } else if (is.factor(var)) {
-    return(levels(var))
-  } else if (is.character(var)) {
-    return(sort(unique(var)))
-  } else {
-    rlang::abort("`var` is not a valid type.")
-  }
-}
-
-#' Get summary statistics for a model predictor
+#' Get mean 1d distance between points
 #'
 #' @param x A vector.
 #'
-#' @return A named list of summary statistics.
-summarise_predictor <- function(x) {
-  list(mean = ifelse(is.numeric(x), mean(x), NA_real_),
-       sd = ifelse(is.numeric(x), stats::sd(x), NA_real_),
-       min = ifelse(is.numeric(x), min(x), NA_real_),
-       max = ifelse(is.numeric(x), max(x), NA_real_),
-       spacing = get_var_spacing(x))
+#' @return The average distance between `x` points.
+spacing <- function(x) {
+  if (!is.numeric(x)) {
+    rlang::abort("`x` is not a valid type.")
+  }
+
+  x <- sort(unique(x))
+  x_spacing <- sapply(2:length(x), \(i) x[i] - var[i - 1])
+  mean(x_spacing)
 }
 
+# Borrowing this from the modelr package
+# https://github.com/tidyverse/modelr/blob/main/R/typical.R
+typical <- function(x, ...) {
+  UseMethod("typical")
+}
+
+#' @export
+typical.numeric <- function(x, ...) {
+  stats::median(x, na.rm = TRUE)
+}
+
+#' @export
+typical.factor <- function(x, ...) {
+  counts <- table(x, exclude = NULL)
+  typ <- levels(x)[max(counts) == counts]
+  factor(typ[1], levels = levels(x))
+}
+
+#' @export
+typical.character <- function(x, ...) {
+  counts <- table(x, exclude = NULL)
+  typ <- names(counts)[max(counts) == counts]
+  typ[1]
+}
+
+#' @export
+typical.logical <- function(x, ...) {
+  mean(x, na.rm = TRUE) >= 0.5
+}
+
+#' @export
+typical.integer <- function(x, ...) {
+  unname(stats::quantile(x, 0.5, type = 1, na.rm = TRUE))
+}
+
+#' @export
+typical.ordered <- function(x, ...) {
+  typ <- levels(x)[stats::quantile(as.integer(x), 0.5, type = 1, na.rm = TRUE)]
+  factor(typ, levels = levels(x), ordered = T)
+}

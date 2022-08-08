@@ -4,18 +4,18 @@
 \alias{wand_plot_smooths}
 \title{Plot smooth functions from a wand model}
 \usage{
-wand_plot_smooths(wand_fit, df, seq_length = 250)
+wand_plot_smooths(wand_fit, seq_length = 250)
 }
 \arguments{
 \item{wand_fit}{A fitted \code{wand} model.}
 
-\item{df}{A dataframe used to determine feature ranges and spacing. It is recommended to use the
-training dataframe.}
-
-\item{seq_length}{The maximum number of points used when plotting each smooth.}
+\item{seq_length}{The maximum number of points used when plotting each smooth. If the smooth is
+2d, this represents the number of unique points used for each axis, such that the total number
+of points is \code{seq_length*seq_length}.}
 }
 \value{
-A list where each entry is a ggplot of a smooth function.
+A list where each entry is a ggplot of a smooth function. Note that smooths are plotted
+after any pre-processing.
 }
 \description{
 Plot smooth functions from a wand model

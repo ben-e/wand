@@ -2,7 +2,7 @@
 % Please edit documentation in R/helpers.R
 \name{summarise_predictor}
 \alias{summarise_predictor}
-\title{Get summary statistics for a model predictor}
+\title{Get summary statistics for a}
 \usage{
 summarise_predictor(x)
 }
@@ -13,5 +13,5 @@ summarise_predictor(x)
 A named list of summary statistics.
 }
 \description{
-Get summary statistics for a model predictor
+Get summary statistics for a
 }
