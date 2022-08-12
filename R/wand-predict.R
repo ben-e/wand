@@ -43,14 +43,7 @@ predict.wand <- function(object, new_data, type = NULL, ...) {
   }
 
   # Remove smoothed terms from the linear data
-  smooth_features_intersect <- intersect(
-    unique(unlist(lapply(
-      object$predictor_info$smooth_predictors,
-      \(i) names(i$predictors)
-    ))),
-    names(forged_linear)
-  )
-  forged_linear <- dplyr::select(forged_linear, -dplyr::all_of(smooth_features_intersect))
+  forged_linear <- dplyr::select(forged_linear, dplyr::all_of(object$predictor_info$linear_predictors))
 
   if (is.null(type)) {
     if (object$mode == "regression")
@@ -79,7 +72,7 @@ predict_wand_bridge <- function(type, object, linear_predictors, smooth_predicto
   object$model_obj <- hydrate_model(object$model_obj)
 
   # Load model params into model and set eval mode
-  object$model_obj$load_state_dict(lapply(object$best_model_params, torch::torch_tensor))
+  object$model_obj$load_state_dict(lapply(object$model_params, torch::torch_tensor))
   object$model_obj$eval()
 
   predict_function <- get_wand_predict_function(type)

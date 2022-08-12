@@ -2,6 +2,12 @@
 
 S3method(coef,wand)
 S3method(predict,wand)
+S3method(typical,character)
+S3method(typical,factor)
+S3method(typical,integer)
+S3method(typical,logical)
+S3method(typical,numeric)
+S3method(typical,ordered)
 S3method(wand,data.frame)
 S3method(wand,default)
 S3method(wand,formula)

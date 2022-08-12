@@ -92,7 +92,16 @@ wand.data.frame <- function(x, y,
                             verbose = F,
                             ...) {
 
+  # TODO make this nicer
   typical_df <- dplyr::summarise(x, dplyr::across(.fns = typical))
+  typical_df$.metric <- "typical"
+  spacing_df <- dplyr::summarise(x, dplyr::across(where(is.numeric), spacing))
+  spacing_df$.metric <- "spacing"
+  min_df <- dplyr::summarise(x, dplyr::across(where(is.numeric), min))
+  min_df$.metric <- "min"
+  max_df <- dplyr::summarise(x, dplyr::across(where(is.numeric), max))
+  max_df$.metric <- "max"
+  typical_df <- dplyr::bind_rows(typical_df, spacing_df, min_df, max_df)
 
   processed <- hardhat::mold(x, y)
 
@@ -138,7 +147,16 @@ wand.matrix <- function(x, y,
   if (!is.numeric(x))
     rlang::abort("`x` must be numeric.")
 
-  typical_df <- apply(x, 2, typical)
+  # TODO these are ugly
+  typical_df <- as.data.frame(t(apply(x, 2, typical)))
+  typical_df$.metric <- "typical"
+  spacing_df <- as.data.frame(t(apply(x, 2, spacing)))
+  spacing_df$.metric <- "spacing"
+  min_df <- as.data.frame(t(apply(x, 2, min)))
+  min_df$.metric <- "min"
+  max_df <- as.data.frame(t(apply(x, 2, max)))
+  max_df$.metric <- "max"
+  typical_df <- dplyr::bind_rows(typical_df, spacing_df, min_df, max_df)
 
   processed <- hardhat::mold(x, y)
 
@@ -178,6 +196,14 @@ wand.formula <- function(formula, data,
                          ...) {
 
   typical_df <- dplyr::summarise(data, dplyr::across(.fns = typical))
+  typical_df$.metric <- "typical"
+  spacing_df <- dplyr::summarise(data, dplyr::across(where(is.numeric), spacing))
+  spacing_df$.metric <- "spacing"
+  min_df <- dplyr::summarise(data, dplyr::across(where(is.numeric), min))
+  min_df$.metric <- "min"
+  max_df <- dplyr::summarise(data, dplyr::across(where(is.numeric), max))
+  max_df$.metric <- "max"
+  typical_df <- dplyr::bind_rows(typical_df, spacing_df, min_df, max_df)
 
   # Extract smooth terms from the formula
   new_formula_and_smooth_specs <- extract_smooths(formula)
@@ -220,6 +246,14 @@ wand.recipe <- function(x, data,
                         ...) {
 
   typical_df <- dplyr::summarise(data, dplyr::across(.fns = typical))
+  typical_df$.metric <- "typical"
+  spacing_df <- dplyr::summarise(data, dplyr::across(where(is.numeric), spacing))
+  spacing_df$.metric <- "spacing"
+  min_df <- dplyr::summarise(data, dplyr::across(where(is.numeric), min))
+  min_df$.metric <- "min"
+  max_df <- dplyr::summarise(data, dplyr::across(where(is.numeric), max))
+  max_df$.metric <- "max"
+  typical_df <- dplyr::bind_rows(typical_df, spacing_df, min_df, max_df)
 
   processed <- hardhat::mold(x, data)
 
@@ -292,13 +326,16 @@ wand_bridge <- function(processed,
     model_obj = fit$model_obj,
     model_params = fit$best_model_params,
     outcome_info = fit$outcome_info,
+    predictor_info = list(linear_predictors = linear_predictors,
+                          smooth_predictors = smooth_predictors,
+                          # TODO contains the outcome as well, so not..just predictors
+                          typical_df = typical_df),
     mode = fit$mode,
     blueprint = processed$blueprint,
     smooth_blueprints = lapply(smooth_specs, \(x) x$processed$blueprint),
     training_params = fit$training_params,
     smooth_specs = smooth_specs,
-    training_results = fit$training_results,
-    typical_df = typical_df,
+    training_results = fit$training_results
   )
 }
 
@@ -309,7 +346,6 @@ wand_bridge <- function(processed,
 wand_impl <- function(x,
                       y,
                       smooth_specs,
-                      outcome,
                       # batch
                       batch_size,
                       validation_prop,
@@ -324,21 +360,33 @@ wand_impl <- function(x,
 
   # Are we doing classification or regression?
   # Set up loss, dataset to match the mode
-  if (is.factor(outcome)) {
+  if (is.factor(y)) {
     mode <- "classification"
 
-    outcome_classes <- levels(outcome)
+    outcome_classes <- levels(y)
     n_classes <- length(outcome_classes)
 
     outcome_info <- list(classes = outcome_classes)
 
-    outcome <- as.integer(outcome)
+    y <- as.integer(y)
   } else {
     mode <- "regression"
 
     n_classes <- NULL
 
-    outcome <- as.double(outcome)
+    y <- as.double(y)
+
+    # scale the outcome
+    if (validation_prop > 0) {
+      in_val <- sample(seq_along(y), floor(length(y) * validation_prop))
+
+      outcome_info <- list(mean = mean(y[-in_val]), sd = stats::sd(y[-in_val]))
+
+      y <- scale_y(y, outcome_info)
+    } else {
+      outcome_info <- list(mean = mean(y), sd = stats::sd(y))
+      y <- scale_y(y, outcome_info)
+    }
   }
 
   if (verbose) {
@@ -346,50 +394,30 @@ wand_impl <- function(x,
   }
 
   # Build the torch dataset
-  # if validation_prop is non-zero and the mode is regression then we need to scale the outcome
-  # appropriately (not using val data); if the mode is classification then we want to record all
-  # classes, even if they only occur in the val data
   if (validation_prop > 0) {
-    in_val <- sample(seq_along(outcome), floor(length(outcome) * validation_prop))
-
-    if (mode == "regression") {
-      outcome_info <- list(mean = mean(outcome[-in_val]), sd = stats::sd(outcome[-in_val]))
-      outcome <- scale_y(outcome, outcome_info)
-    }
-
     ds_val <- build_wand_dataset(x[in_val, ,],
                                  lapply(smooth_specs, \(spec) spec$processed$predictors[in_val, ]),
-                                 outcome[in_val],
+                                 y[in_val],
                                  requires_grad = F)
 
     ds <- build_wand_dataset(x[-in_val, ,],
                              lapply(smooth_specs, \(spec) spec$processed$predictors[-in_val, ]),
-                             outcome[-in_val],
+                             y[-in_val],
                              requires_grad = T)
   } else {
-    if (mode == "regression") {
-      outcome_info <- list(mean = mean(outcome), sd = stats::sd(outcome))
-      outcome <- scale_y(outcome, outcome_info)
-    }
-
     ds <- build_wand_dataset(x,
                              lapply(smooth_specs, \(spec) spec$processed$predictors),
-                             outcome,
+                             y,
                              requires_grad = T)
   }
-
-  TODO
 
   # Build batch dataloader
   dl <- torch::dataloader(ds, batch_size = batch_size)
 
   # Initialize wand modules
-  n_linear_features <- ifelse("x_linear" %in% names(ds$tensors),
-                              ncol(ds$tensors[['x_linear']]),
-                              0)
-  # TODO At this point the smooth specs also include a bunch of data that doesn't need to be passed
+  # TODO at this point the smooth specs also include a bunch of data that doesn't need to be passed
   # to wand module init, is this slow?
-  model <- wand_module(n_linear_features, smooth_specs, mode = mode, n_classes = n_classes)
+  model <- wand_module(ncol(x), smooth_specs, mode = mode, n_classes = n_classes)
 
   # Choose loss function
   if (mode == "classification") {
@@ -402,6 +430,7 @@ wand_impl <- function(x,
       torch::nnf_mse_loss(input[, 1], target)
     }
   }
+
   # Initialize optimizer
   # optimizer <- torch::optim_sgd(model$parameters, lr = learn_rate)
   optimizer <- torch::optim_adam(model$parameters, lr = learn_rate, weight_decay = 0.1)
@@ -433,6 +462,7 @@ wand_impl <- function(x,
     # Save loss and track whether or not loss is improving
     loss_current <- round(loss$item(), loss_tol)
     loss_vec[epoch] <- loss_current
+
     if (validation_prop > 0) {
       pred_val <- model(ds_val$tensors)
       loss <- loss_fn(pred_val, ds_val$tensors$y)
@@ -456,7 +486,6 @@ wand_impl <- function(x,
       } else {
         consec_iters_without_improvement <- consec_iters_without_improvement + 1
       }
-
     }
 
     # Report back to the user

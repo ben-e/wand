@@ -109,7 +109,7 @@ spacing <- function(x) {
   }
 
   x <- sort(unique(x))
-  x_spacing <- sapply(2:length(x), \(i) x[i] - var[i - 1])
+  x_spacing <- sapply(2:length(x), \(i) x[i] - x[i - 1])
   mean(x_spacing)
 }
 

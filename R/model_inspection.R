@@ -26,6 +26,7 @@ wand_plot_loss <- function(wand_fit, show_best_epoch = T, show_early_stopping = 
                loss = wand_fit$training_results$validation_loss,
                type = "validation_loss")
   )
+  df <- na.omit(df)
 
   best_epoch <- wand_fit$training_results$best_epoch
   last_epoch <- wand_fit$training_results$last_epoch
@@ -53,7 +54,7 @@ wand_plot_loss <- function(wand_fit, show_best_epoch = T, show_early_stopping = 
     }
   }
 
-  if (show_early_stopping && last_epoch < max(df$epoch)) {
+  if (show_early_stopping && last_epoch < wand_fit$training_params$epochs) {
     pl <- pl +
       ggplot2::geom_vline(xintercept = last_epoch,
                           colour = "firebrick1",
@@ -92,61 +93,42 @@ wand_plot_smooths <- function(wand_fit, seq_length = 250) {
     prediction_mode <- "numeric"
   }
 
-  if (max(sapply(smooth_features, length)) > 2) {
+  if (max(sapply(wand_fit$smooth_specs, \(x) length(x$features))) > 2) {
     rlang::abort("Only smooths with a max of two features can currently be plotted.")
   }
 
-  # TODO build a df with the mean of all predictors?
-  # this is all molded data.., but if we feed through predict it's going to get forged again, so huh
-  # I could use the predict bridge function directly, but I'd rather not.
+  lapply(wand_fit$smooth_specs, \(smooth_spec) {
+    # TODO probably a cleaner way to build this grid, maybe just use tidyr..
+    # build the data grid
+    typical_df <- dplyr::filter(wand_fit$predictor_info$typical_df, .metric == "typical")
+    typical_df <- dplyr::select(typical_df, -dplyr::all_of(c(smooth_spec$features, ".metric")))
 
-  smooth_predictor_means <- lapply(wand_fit$predictor_info$smooth_predictors,
-                                   \(x) sapply(x$predictors, \(y) y$mean))
-  names(smooth_predictor_means) <- NULL
-  smooth_predictor_means <- unlist(smooth_predictor_means)
-  base_df <- dplyr::as_tibble(as.list(c(sapply(wand_fit$predictor_info$linear_predictors, \(x) x$mean),
-                                        smooth_predictor_means)))
+    dg_info <- dplyr::select(wand_fit$predictor_info$typical_df,
+                             dplyr::all_of(smooth_spec$features))
+    dg_info <- as.data.frame(t(dg_info))
+    colnames(dg_info) <- wand_fit$predictor_info$typical_df$.metric
 
+    dg <- lapply(seq_along(smooth_spec$features),
+                 \(i) seq(from = dg_info$min[i], to = dg_info$max[i], by = dg_info$spacing[i]))
+    dg <- expand.grid(dg)
+    colnames(dg) <- smooth_spec$features
 
-  lapply(wand_fit$predictor_info$smooth_predictors, \(smooth_predictor) {
+    dg <- dplyr::tibble(typical_df, dg)
 
-  })
+    dg$.pred <- stats::predict(wand_fit, new_data = dg, type = prediction_mode)[[1]]
 
-  # plot each smooth
-  smooth_plots <- list()
-  for (smooth in smooth_features) {
-    var_seq <- expand.grid(lapply(seq_along(smooth),
-                                  # max of 1000 points per variable
-                                  \(x) get_var_sequence(dplyr::pull(df, smooth[x]), seq_length)))
-    colnames(var_seq) <- smooth
-
-    mean_df <- dplyr::select(df, -dplyr::all_of(smooth))
-    # mean for numeric, mode for factor
-    mean_df <- dplyr::summarise(
-      mean_df, dplyr::across(where(is.numeric), mean),
-      dplyr::across(where(is.factor), \(x) names(which.max(table(x)))[1]),
-      dplyr::across(where(is.character), \(x) names(which.max(table(x)))[1])
-    )
-
-    pdp_df <- cbind(mean_df, var_seq)
-
-    pdp_df$.pred <- stats::predict(wand_fit, new_data = pdp_df, type = prediction_mode)[[1]]
-
-    if (length(smooth) == 1) {
-      pl <- ggplot2::ggplot(pdp_df, ggplot2::aes_string(x = smooth[1], y = ".pred")) +
+    if (length(smooth_spec$features) == 1) {
+      pl <- ggplot2::ggplot(dg, ggplot2::aes_string(x = smooth_spec$features[1], y = ".pred")) +
         ggplot2::geom_path()
     }
     else {
-      pl <- ggplot2::ggplot(pdp_df, ggplot2::aes_string(x = smooth[1], y = smooth[2],
-                                                        z = ".pred")) +
+      pl <- ggplot2::ggplot(dg, ggplot2::aes_string(x = smooth_spec$features[1],
+                                                    y = smooth_spec$features[2],
+                                                    z = ".pred")) +
         ggplot2::stat_contour_filled() +
         ggplot2::labs(fill = ".pred")
     }
-
-    smooth_plots[[length(smooth_plots) + 1]] <- pl
-  }
-
-  smooth_plots
+  })
 }
 
 #' Builds a `ggraph::tbl_graph` showing data flow through a wand model
