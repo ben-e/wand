@@ -26,7 +26,7 @@ wand_plot_loss <- function(wand_fit, show_best_epoch = T, show_early_stopping = 
                loss = wand_fit$training_results$validation_loss,
                type = "validation_loss")
   )
-  df <- na.omit(df)
+  df <- stats::na.omit(df)
 
   best_epoch <- wand_fit$training_results$best_epoch
   last_epoch <- wand_fit$training_results$last_epoch
@@ -99,35 +99,43 @@ wand_plot_smooths <- function(wand_fit, seq_length = 250) {
 
   lapply(wand_fit$smooth_specs, \(smooth_spec) {
     # TODO probably a cleaner way to build this grid, maybe just use tidyr..
-    # build the data grid
-    typical_df <- dplyr::filter(wand_fit$predictor_info$typical_df, .metric == "typical")
-    typical_df <- dplyr::select(typical_df, -dplyr::all_of(c(smooth_spec$features, ".metric")))
 
-    dg_info <- dplyr::select(wand_fit$predictor_info$typical_df,
-                             dplyr::all_of(smooth_spec$features))
+    smooth_features <- smooth_spec$features
+
+    # Get the typical values for all predictors except the current smooth features
+    typical_df <- wand_fit$predictor_info$typical_df
+    typical_df <- typical_df[ , typical_df$.metric == "typical"]
+    typical_df <- dplyr::select(typical_df, -dplyr::all_of(c(smooth_features, ".metric")))
+
+    # Create a grid across feature values
+    dg_info <- dplyr::select(wand_fit$predictor_info$typical_df, dplyr::all_of(smooth_features))
     dg_info <- as.data.frame(t(dg_info))
     colnames(dg_info) <- wand_fit$predictor_info$typical_df$.metric
-
-    dg <- lapply(seq_along(smooth_spec$features),
+    dg <- lapply(seq_along(smooth_features),
                  \(i) seq(from = dg_info$min[i], to = dg_info$max[i], by = dg_info$spacing[i]))
     dg <- expand.grid(dg)
-    colnames(dg) <- smooth_spec$features
+    colnames(dg) <- smooth_features
 
+    # Combine typical features with the datagrid
     dg <- dplyr::tibble(typical_df, dg)
 
+    # Get model predictions
     dg$.pred <- stats::predict(wand_fit, new_data = dg, type = prediction_mode)[[1]]
 
-    if (length(smooth_spec$features) == 1) {
-      pl <- ggplot2::ggplot(dg, ggplot2::aes_string(x = smooth_spec$features[1], y = ".pred")) +
+    # Plot, finally
+    if (length(smooth_features) == 1) {
+      pl <- ggplot2::ggplot(dg, ggplot2::aes_string(x = smooth_features[1], y = ".pred")) +
         ggplot2::geom_path()
     }
     else {
-      pl <- ggplot2::ggplot(dg, ggplot2::aes_string(x = smooth_spec$features[1],
-                                                    y = smooth_spec$features[2],
+      pl <- ggplot2::ggplot(dg, ggplot2::aes_string(x = smooth_features[1],
+                                                    y = smooth_features[2],
                                                     z = ".pred")) +
         ggplot2::stat_contour_filled() +
         ggplot2::labs(fill = ".pred")
     }
+
+    pl
   })
 }
 
@@ -140,11 +148,11 @@ wand_plot_smooths <- function(wand_fit, seq_length = 250) {
 #' @export
 build_wand_graph <- function(wand_fit) {
   # Get feature names
-  linear_features <- names(wand_fit$predictor_info$linear_predictors)
-  smooth_features <- unlist(lapply(wand_fit$predictor_info$smooth_predictors,
-                                   \(x) names(x$predictors)))
+  linear_features <- wand_fit$predictor_info$linear_predictors
+  smooth_features <- wand_fit$predictor_info$smooth_predictors
+
   # Get outcome
-  if (is.factor(wand_fit$blueprint$ptypes$outcomes[[1]])) {
+  if (sapply(wand_fit$blueprint$ptypes$outcomes, is.factor)[1]) {
     outcomes <- levels(wand_fit$blueprint$ptypes$outcomes[[1]])
     outcomes <- paste0("Class: ", outcomes)
   } else {
@@ -154,7 +162,7 @@ build_wand_graph <- function(wand_fit) {
   outcomes <- paste0("Predicted ", outcomes)
 
   # Get smooth modules
-  smooth_modules <- sapply(wand_fit$predictor_info$smooth_predictors, \(x) {
+  smooth_modules <- sapply(wand_fit$smooth_specs, \(x) {
     paste0(#"features: ", paste0(names(x$predictors), collapse = ", "), "\n",
       "torch module: ", x$torch_module_name, "\n",
       "torch module parameters: \n",
@@ -173,7 +181,7 @@ build_wand_graph <- function(wand_fit) {
   smooth_edges <- data.frame(
     from = smooth_features,
     to = rep(smooth_modules,
-             times = sapply(wand_fit$predictor_info$smooth_predictors, \(x) length(x$predictors)))
+             times = sapply(wand_fit$smooth_specs, \(x) length(x$features)))
   )
   linear_layer_edges <- data.frame(
     from = c(smooth_edges$to, linear_features),

@@ -52,8 +52,8 @@ test_that("wand numeric predictions are numeric", {
 test_that("wand probability predictions are probabilities", {
   mod <- wand(bi_class_smooth_fmla, data = bivariate_train)
 
-  expect_lte(max(predict(mod, bivariate_test, type = "prob")$pred_One), 1)
-  expect_gte(min(predict(mod, bivariate_test, type = "prob")$pred_One), 0)
+  expect_lte(max(predict(mod, bivariate_test, type = "prob")$.pred_One), 1)
+  expect_gte(min(predict(mod, bivariate_test, type = "prob")$.pred_One), 0)
 })
 
 test_that("wand class predictions are factors", {

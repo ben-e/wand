@@ -31,18 +31,12 @@ test_that("`wand_plot_loss` returns a plot", {
                                  show_labels = F), "ggplot")
 })
 
-test_that("`get_var_sequence` returns correct sequences", {
-  expect_length(get_var_sequence(rnorm(100), 10), 10)
+test_that("`spacing` returns the correct spacing", {
+  expect_equal(spacing(1:10), 1)
 
-  expect_length(get_var_sequence(rnorm(1), 1), 1)
+  expect_equal(spacing(-10:10), 1)
 
-  expect_length(get_var_sequence(1:250), 250)
-
-  expect_length(get_var_sequence(-1:-250), 250)
-
-  expect_length(get_var_sequence(mtcars$cyl), 3)
-
-  expect_error(get_var_sequence(letters))
+  expect_equal(spacing(seq(0, 5, 0.25)), 0.25)
 })
 
 test_that("`wand_plot_smooths` returns the valid plots", {

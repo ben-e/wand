@@ -358,6 +358,10 @@ wand_impl <- function(x,
 
   torch::torch_manual_seed(4242)
 
+  if (validation_prop > 0) {
+    in_val <- sample(seq_along(y), floor(length(y) * validation_prop))
+  }
+
   # Are we doing classification or regression?
   # Set up loss, dataset to match the mode
   if (is.factor(y)) {
@@ -378,8 +382,6 @@ wand_impl <- function(x,
 
     # scale the outcome
     if (validation_prop > 0) {
-      in_val <- sample(seq_along(y), floor(length(y) * validation_prop))
-
       outcome_info <- list(mean = mean(y[-in_val]), sd = stats::sd(y[-in_val]))
 
       y <- scale_y(y, outcome_info)
