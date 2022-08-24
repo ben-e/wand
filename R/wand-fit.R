@@ -92,16 +92,7 @@ wand.data.frame <- function(x, y,
                             verbose = F,
                             ...) {
 
-  # TODO make this nicer
-  typical_df <- dplyr::summarise(x, dplyr::across(.fns = typical))
-  typical_df$.metric <- "typical"
-  spacing_df <- dplyr::summarise(x, dplyr::across(where(is.numeric), spacing))
-  spacing_df$.metric <- "spacing"
-  min_df <- dplyr::summarise(x, dplyr::across(where(is.numeric), min))
-  min_df$.metric <- "min"
-  max_df <- dplyr::summarise(x, dplyr::across(where(is.numeric), max))
-  max_df$.metric <- "max"
-  typical_df <- dplyr::bind_rows(typical_df, spacing_df, min_df, max_df)
+  typical_df <- build_typical_df(x)
 
   processed <- hardhat::mold(x, y)
 
@@ -147,16 +138,7 @@ wand.matrix <- function(x, y,
   if (!is.numeric(x))
     rlang::abort("`x` must be numeric.")
 
-  # TODO these are ugly
-  typical_df <- as.data.frame(t(apply(x, 2, typical)))
-  typical_df$.metric <- "typical"
-  spacing_df <- as.data.frame(t(apply(x, 2, spacing)))
-  spacing_df$.metric <- "spacing"
-  min_df <- as.data.frame(t(apply(x, 2, min)))
-  min_df$.metric <- "min"
-  max_df <- as.data.frame(t(apply(x, 2, max)))
-  max_df$.metric <- "max"
-  typical_df <- dplyr::bind_rows(typical_df, spacing_df, min_df, max_df)
+  typical_df <- build_typical_df(x)
 
   processed <- hardhat::mold(x, y)
 
@@ -195,15 +177,7 @@ wand.formula <- function(formula, data,
                          verbose = F,
                          ...) {
 
-  typical_df <- dplyr::summarise(data, dplyr::across(.fns = typical))
-  typical_df$.metric <- "typical"
-  spacing_df <- dplyr::summarise(data, dplyr::across(where(is.numeric), spacing))
-  spacing_df$.metric <- "spacing"
-  min_df <- dplyr::summarise(data, dplyr::across(where(is.numeric), min))
-  min_df$.metric <- "min"
-  max_df <- dplyr::summarise(data, dplyr::across(where(is.numeric), max))
-  max_df$.metric <- "max"
-  typical_df <- dplyr::bind_rows(typical_df, spacing_df, min_df, max_df)
+  typical_df <- build_typical_df(data)
 
   # Extract smooth terms from the formula
   new_formula_and_smooth_specs <- extract_smooths(formula)
@@ -245,15 +219,7 @@ wand.recipe <- function(x, data,
                         verbose = F,
                         ...) {
 
-  typical_df <- dplyr::summarise(data, dplyr::across(.fns = typical))
-  typical_df$.metric <- "typical"
-  spacing_df <- dplyr::summarise(data, dplyr::across(where(is.numeric), spacing))
-  spacing_df$.metric <- "spacing"
-  min_df <- dplyr::summarise(data, dplyr::across(where(is.numeric), min))
-  min_df$.metric <- "min"
-  max_df <- dplyr::summarise(data, dplyr::across(where(is.numeric), max))
-  max_df$.metric <- "max"
-  typical_df <- dplyr::bind_rows(typical_df, spacing_df, min_df, max_df)
+  typical_df <- build_typical_df(data)
 
   processed <- hardhat::mold(x, data)
 
@@ -328,7 +294,7 @@ wand_bridge <- function(processed,
     outcome_info = fit$outcome_info,
     predictor_info = list(linear_predictors = linear_predictors,
                           smooth_predictors = smooth_predictors,
-                          # TODO contains the outcome as well, so not..just predictors
+                          # TODO contains the outcome as well, so not..just predictors, is that OK?
                           typical_df = typical_df),
     mode = fit$mode,
     blueprint = processed$blueprint,

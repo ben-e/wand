@@ -104,7 +104,7 @@ wand_plot_smooths <- function(wand_fit, seq_length = 250) {
 
     # Get the typical values for all predictors except the current smooth features
     typical_df <- wand_fit$predictor_info$typical_df
-    typical_df <- typical_df[ , typical_df$.metric == "typical"]
+    typical_df <- typical_df[typical_df$.metric == "typical", ]
     typical_df <- dplyr::select(typical_df, -dplyr::all_of(c(smooth_features, ".metric")))
 
     # Create a grid across feature values
@@ -219,8 +219,7 @@ coef.wand <- function(object, ...) {
   # actually want those, so remove them.
   n_features <- ncol(model_weight)
   if (length(object$predictor_info$smooth_predictors) > 0) {
-    n_smooth_features <- sum(sapply(object$predictor_info$smooth_predictors,
-                                    \(x) x$n_smooth_features))
+    n_smooth_features <- sum(sapply(object$smooth_specs, \(x) x$n_smooth_features))
   } else {
     n_smooth_features <- 0
   }
@@ -233,7 +232,7 @@ coef.wand <- function(object, ...) {
   }
 
   model_coefs <- rbind(model_bias, t(model_weight))
-  rownames(model_coefs) <- c("(Intercept)", names(object$predictor_info$linear_predictors))
+  rownames(model_coefs) <- c("(Intercept)", object$predictor_info$linear_predictors)
   if (object$mode == "classification")
     colnames(model_coefs) <- levels(object$blueprint$ptypes$outcomes[[1]])
 
