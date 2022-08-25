@@ -119,30 +119,36 @@ typical <- function(x, ...) {
   UseMethod("typical")
 }
 
+#' @export
 typical.numeric <- function(x, ...) {
   stats::median(x, na.rm = TRUE)
 }
 
+#' @export
 typical.factor <- function(x, ...) {
   counts <- table(x, exclude = NULL)
   typ <- levels(x)[max(counts) == counts]
   factor(typ[1], levels = levels(x))
 }
 
+#' @export
 typical.character <- function(x, ...) {
   counts <- table(x, exclude = NULL)
   typ <- names(counts)[max(counts) == counts]
   typ[1]
 }
 
+#' @export
 typical.logical <- function(x, ...) {
   mean(x, na.rm = TRUE) >= 0.5
 }
 
+#' @export
 typical.integer <- function(x, ...) {
   unname(stats::quantile(x, 0.5, type = 1, na.rm = TRUE))
 }
 
+#' @export
 typical.ordered <- function(x, ...) {
   typ <- levels(x)[stats::quantile(as.integer(x), 0.5, type = 1, na.rm = TRUE)]
   factor(typ, levels = levels(x), ordered = T)
@@ -152,6 +158,7 @@ build_typical_df <- function(x, ...) {
   UseMethod("build_typical_df")
 }
 
+#' @export
 build_typical_df.data.frame <- function(x, ...) {
   typical_df <- dplyr::summarise(x, dplyr::across(.fns = typical))
   typical_df$.metric <- "typical"
@@ -170,6 +177,7 @@ build_typical_df.data.frame <- function(x, ...) {
   typical_df
 }
 
+#' @export
 build_typical_df.matrix <- function(x, ...) {
   typical_df <- as.data.frame(t(apply(x, 2, typical)))
   typical_df$.metric <- "typical"
