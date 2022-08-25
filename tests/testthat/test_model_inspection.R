@@ -31,14 +31,6 @@ test_that("`wand_plot_loss` returns a plot", {
                                  show_labels = F), "ggplot")
 })
 
-test_that("`spacing` returns the correct spacing", {
-  expect_equal(spacing(1:10), 1)
-
-  expect_equal(spacing(-10:10), 1)
-
-  expect_equal(spacing(seq(0, 5, 0.25)), 0.25)
-})
-
 test_that("`wand_plot_smooths` returns the valid plots", {
   expect_s3_class(wand_plot_smooths(wand_fit_reg)[[1]], "ggplot")
   expect_s3_class(wand_plot_smooths(wand_fit_reg_early)[[1]], "ggplot")
