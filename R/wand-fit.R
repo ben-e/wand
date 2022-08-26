@@ -92,7 +92,10 @@ wand.data.frame <- function(x, y,
                             verbose = F,
                             ...) {
 
+  typical_df <- build_typical_df(x)
+
   processed <- hardhat::mold(x, y)
+
   smooth_specs <- lapply(
     smooth_specs,
     \(spec) append(spec, list(processed = hardhat::mold(spec$formula, data = x)))
@@ -101,6 +104,7 @@ wand.data.frame <- function(x, y,
   wand_bridge(
     processed,
     smooth_specs,
+    typical_df,
     batch_size = batch_size,
     validation_prop = validation_prop,
     epochs = epochs,
@@ -131,7 +135,13 @@ wand.matrix <- function(x, y,
   if (is.null(colnames(x)))
     rlang::abort("`x` must have column names.")
 
+  if (!is.numeric(x))
+    rlang::abort("`x` must be numeric.")
+
+  typical_df <- build_typical_df(x)
+
   processed <- hardhat::mold(x, y)
+
   smooth_specs <- lapply(
     smooth_specs,
     \(spec) append(spec, list(processed = hardhat::mold(spec$formula, data = x)))
@@ -140,6 +150,7 @@ wand.matrix <- function(x, y,
   wand_bridge(
     processed,
     smooth_specs,
+    typical_df,
     batch_size = batch_size,
     validation_prop = validation_prop,
     epochs = epochs,
@@ -166,9 +177,12 @@ wand.formula <- function(formula, data,
                          verbose = F,
                          ...) {
 
+  typical_df <- build_typical_df(data)
+
   # Extract smooth terms from the formula
   new_formula_and_smooth_specs <- extract_smooths(formula)
   processed <- hardhat::mold(new_formula_and_smooth_specs$formula, data)
+
   smooth_specs <- lapply(
     new_formula_and_smooth_specs$smooth_specs,
     \(spec) append(spec, list(processed = hardhat::mold(spec$formula, data = data)))
@@ -176,7 +190,8 @@ wand.formula <- function(formula, data,
 
   wand_bridge(
     processed,
-    smooth_specs = smooth_specs,
+    smooth_specs,
+    typical_df,
     batch_size = batch_size,
     validation_prop = validation_prop,
     epochs = epochs,
@@ -204,7 +219,10 @@ wand.recipe <- function(x, data,
                         verbose = F,
                         ...) {
 
+  typical_df <- build_typical_df(data)
+
   processed <- hardhat::mold(x, data)
+
   # unlike the other methods, the smooth specs are molded on the already processed data
   smooth_specs <- lapply(
     smooth_specs,
@@ -214,6 +232,7 @@ wand.recipe <- function(x, data,
   wand_bridge(
     processed,
     smooth_specs,
+    typical_df,
     batch_size = batch_size,
     validation_prop = validation_prop,
     epochs = epochs,
@@ -229,6 +248,7 @@ wand.recipe <- function(x, data,
 
 wand_bridge <- function(processed,
                         smooth_specs,
+                        typical_df,
                         # batch
                         batch_size,
                         validation_prop,
@@ -241,24 +261,22 @@ wand_bridge <- function(processed,
                         ...) {
 
   # If a term is used in a smooth, remove it from the linear predictors
-  # TODO For XY and recipe, if a user does something like s_mlp( ~ log(z)) then z will be included
+  # TODO For XY and recipe, if a user does something like s_mlp(log(z)) then z will be included
   # as a linear feature and log(z) will be included as a smooth feature. What do? Warn users they
   # should preproc transformations like this for these interfaces?
-  smooth_features_intersect <- intersect(unique(unlist(lapply(smooth_specs, \(i) i$features))),
-                                         names(processed$predictors))
-  linear_predictors <- dplyr::select(processed$predictors,
-                                     -dplyr::all_of(smooth_features_intersect))
-
-  outcome <- processed$outcomes[[1]]
+  smooth_predictors <- unique(unname(unlist(lapply(smooth_specs, \(i) i$features))))
+  linear_predictors <- setdiff(names(processed$predictors), smooth_predictors)
 
   # make sure smooths are named
   if (!rlang::is_missing(smooth_specs) && is.null(names(smooth_specs)) && length(smooth_specs) > 0)
     names(smooth_specs) <- paste0("smooth_", 1:length(smooth_specs))
 
+  # Fit the model
   fit <- wand_impl(
-    linear_predictors,
+    # data
+    dplyr::select(processed$predictors, dplyr::all_of(linear_predictors)),
+    processed$outcomes[[1]],
     smooth_specs,
-    outcome,
     # batch
     batch_size,
     validation_prop,
@@ -270,22 +288,20 @@ wand_bridge <- function(processed,
     verbose = verbose
   )
 
-  # The constructor doesn't need the full smooth spec, just enough to make predictions
-  for (i in seq_along(smooth_specs)) {
-    smooth_specs[[i]]$blueprint <- smooth_specs[[i]]$processed$blueprint
-    smooth_specs[[i]]$processed <- NULL
-    smooth_specs[[i]]$torch_module <- class(smooth_specs[[i]]$torch_module)[1]
-  }
-
   new_wand(
     model_obj = fit$model_obj,
-    best_model_params = fit$best_model_params,
-    smooth_specs = smooth_specs,
-    training_params = fit$training_params,
-    training_results = fit$training_results,
+    model_params = fit$best_model_params,
     outcome_info = fit$outcome_info,
+    predictor_info = list(linear_predictors = linear_predictors,
+                          smooth_predictors = smooth_predictors,
+                          # TODO contains the outcome as well, so not..just predictors, is that OK?
+                          typical_df = typical_df),
     mode = fit$mode,
-    blueprint = processed$blueprint
+    blueprint = processed$blueprint,
+    smooth_blueprints = lapply(smooth_specs, \(x) x$processed$blueprint),
+    training_params = fit$training_params,
+    smooth_specs = smooth_specs,
+    training_results = fit$training_results
   )
 }
 
@@ -293,9 +309,9 @@ wand_bridge <- function(processed,
 # --------------------------------------------------------------------------------------------------
 # Implementation
 
-wand_impl <- function(linear_predictors,
+wand_impl <- function(x,
+                      y,
                       smooth_specs,
-                      outcome,
                       # batch
                       batch_size,
                       validation_prop,
@@ -308,72 +324,58 @@ wand_impl <- function(linear_predictors,
 
   torch::torch_manual_seed(4242)
 
+  if (validation_prop > 0) {
+    in_val <- sample(seq_along(y), floor(length(y) * validation_prop))
+  }
+
   # Are we doing classification or regression?
   # Set up loss, dataset to match the mode
-  if (is.factor(outcome)) {
+  if (is.factor(y)) {
     mode <- "classification"
 
-    outcome_classes <- levels(outcome)
+    outcome_classes <- levels(y)
     n_classes <- length(outcome_classes)
 
     outcome_info <- list(classes = outcome_classes)
 
-    outcome <- as.integer(outcome)
+    y <- as.integer(y)
   } else {
     mode <- "regression"
 
     n_classes <- NULL
 
-    outcome <- as.double(outcome)
+    y <- as.double(y)
+
+    # scale the outcome
+    if (validation_prop > 0) {
+      outcome_info <- list(mean = mean(y[-in_val]), sd = stats::sd(y[-in_val]))
+
+      y <- scale_y(y, outcome_info)
+    } else {
+      outcome_info <- list(mean = mean(y), sd = stats::sd(y))
+      y <- scale_y(y, outcome_info)
+    }
   }
 
   if (verbose) {
     rlang::inform(paste0("mode: ", mode))
   }
 
-  # Prepare validation data if needed
+  # Build the torch dataset
   if (validation_prop > 0) {
-    in_val <- sample(seq_along(outcome), floor(length(outcome) * validation_prop))
-
-    linear_predictors_val <- linear_predictors[in_val, , drop = FALSE]
-    smooth_predictors_val <- lapply(smooth_specs,
-                                    \(spec) spec$processed$predictors[in_val, , drop = FALSE])
-    outcome_val <- outcome[in_val]
-
-    linear_predictors <- linear_predictors[-in_val, , drop = FALSE]
-    smooth_predictors <- lapply(smooth_specs,
-                                \(spec) spec$processed$predictors[-in_val, , drop = FALSE])
-    outcome <- outcome[-in_val]
-
-    # scale the outcome
-    if (mode == "regression") {
-      outcome_info <- list(mean = mean(outcome), sd = stats::sd(outcome))
-      outcome <- scale_y(outcome, outcome_info)
-      outcome_val <- scale_y(outcome_val, outcome_info)
-    }
-
-    # Build validation and training datasets
-    ds_val <- build_wand_dataset(linear_predictors_val,
-                                 smooth_predictors_val,
-                                 outcome_val,
+    ds_val <- build_wand_dataset(x[in_val, ,],
+                                 lapply(smooth_specs, \(spec) spec$processed$predictors[in_val, ]),
+                                 y[in_val],
                                  requires_grad = F)
 
-    ds <- build_wand_dataset(linear_predictors,
-                             smooth_predictors,
-                             outcome,
+    ds <- build_wand_dataset(x[-in_val, ,],
+                             lapply(smooth_specs, \(spec) spec$processed$predictors[-in_val, ]),
+                             y[-in_val],
                              requires_grad = T)
-
   } else {
-    # If no validation, then just scale everything
-    if (mode == "regression") {
-      outcome_info <- list(mean = mean(outcome), sd = stats::sd(outcome))
-      outcome <- scale_y(outcome, outcome_info)
-    }
-
-    # and build a single dataset
-    ds <- build_wand_dataset(linear_predictors,
+    ds <- build_wand_dataset(x,
                              lapply(smooth_specs, \(spec) spec$processed$predictors),
-                             outcome,
+                             y,
                              requires_grad = T)
   }
 
@@ -381,12 +383,9 @@ wand_impl <- function(linear_predictors,
   dl <- torch::dataloader(ds, batch_size = batch_size)
 
   # Initialize wand modules
-  n_linear_features <- ifelse("x_linear" %in% names(ds$tensors),
-                              ncol(ds$tensors[['x_linear']]),
-                              0)
-  # TODO At this point the smooth specs also include a bunch of data that doesn't need to be passed
+  # TODO at this point the smooth specs also include a bunch of data that doesn't need to be passed
   # to wand module init, is this slow?
-  model <- wand_module(n_linear_features, smooth_specs, mode = mode, n_classes = n_classes)
+  model <- wand_module(ncol(x), smooth_specs, mode = mode, n_classes = n_classes)
 
   # Choose loss function
   if (mode == "classification") {
@@ -399,6 +398,7 @@ wand_impl <- function(linear_predictors,
       torch::nnf_mse_loss(input[, 1], target)
     }
   }
+
   # Initialize optimizer
   # optimizer <- torch::optim_sgd(model$parameters, lr = learn_rate)
   optimizer <- torch::optim_adam(model$parameters, lr = learn_rate, weight_decay = 0.1)
@@ -430,6 +430,7 @@ wand_impl <- function(linear_predictors,
     # Save loss and track whether or not loss is improving
     loss_current <- round(loss$item(), loss_tol)
     loss_vec[epoch] <- loss_current
+
     if (validation_prop > 0) {
       pred_val <- model(ds_val$tensors)
       loss <- loss_fn(pred_val, ds_val$tensors$y)
@@ -453,7 +454,6 @@ wand_impl <- function(linear_predictors,
       } else {
         consec_iters_without_improvement <- consec_iters_without_improvement + 1
       }
-
     }
 
     # Report back to the user

@@ -26,6 +26,7 @@ wand_plot_loss <- function(wand_fit, show_best_epoch = T, show_early_stopping = 
                loss = wand_fit$training_results$validation_loss,
                type = "validation_loss")
   )
+  df <- stats::na.omit(df)
 
   best_epoch <- wand_fit$training_results$best_epoch
   last_epoch <- wand_fit$training_results$last_epoch
@@ -53,7 +54,7 @@ wand_plot_loss <- function(wand_fit, show_best_epoch = T, show_early_stopping = 
     }
   }
 
-  if (show_early_stopping && last_epoch < max(df$epoch)) {
+  if (show_early_stopping && last_epoch < wand_fit$training_params$epochs) {
     pl <- pl +
       ggplot2::geom_vline(xintercept = last_epoch,
                           colour = "firebrick1",
@@ -71,101 +72,71 @@ wand_plot_loss <- function(wand_fit, show_best_epoch = T, show_early_stopping = 
   pl
 }
 
-#' Generates an evenly spaced sequence across a variable's values
-#'
-#' @param var A variable, numeric or factor.
-#' @param seq_length An integer giving the maximum number of points in the sequence. If set to `inf`
-#'   (the default) then the average spacing between points is used to determine sequence length. If
-#'   `var` is non-numeric, then `seq_length` is ignored.
-#'
-#' @return An evenly spaced sequence from `var` min to max.
-get_var_sequence <- function(var, seq_length = Inf) {
-  if (is.numeric(var)) {
-    # TODO this could be smarter, e.g. if there are only a few unique levels
-    var <- sort(var)
-    var_min <- min(var, na.rm = T)
-    var_max <- max(var, na.rm = T)
-
-    if (is.infinite(seq_length)) {
-      var_spacing <- sapply(2:length(var), \(x) var[x] - var[x - 1])
-      var_spacing <- mean(var_spacing[var_spacing > 0], na.rm = T)
-      var_seq <- seq(from = var_min, to = var_max, by = var_spacing)
-    } else {
-      var_seq <- seq(from = var_min, to = var_max, length.out = seq_length)
-    }
-  } else if(is.factor(var)) {
-    var_seq <- factor(levels(var), levels(var))
-  } else{
-    rlang::abort("`get_var_sequence` is not supported for argument `var`'s type.")
-  }
-
-  var_seq
-}
-
 #' Plot smooth functions from a wand model
 #'
 #' @param wand_fit A fitted `wand` model.
-#' @param df A dataframe used to determine feature ranges and spacing. It is recommended to use the
-#'   training dataframe.
-#' @param seq_length The maximum number of points used when plotting each smooth.
+#' @param seq_length The maximum number of points used when plotting each smooth. If the smooth is
+#'   2d, this represents the number of unique points used for each axis, such that the total number
+#'   of points is `seq_length*seq_length`.
 #'
-#' @return A list where each entry is a ggplot of a smooth function.
+#' @return A list where each entry is a ggplot of a smooth function. Note that smooths are plotted
+#' after any pre-processing.
 #'
 #' @export
-wand_plot_smooths <- function(wand_fit, df, seq_length = 250) {
-  # preproc data?
-
-  # Get features in each smooth
-  smooth_features <- lapply(wand_fit$smooth_specs, \(x) names(x$blueprint$ptypes$predictors))
+wand_plot_smooths <- function(wand_fit, seq_length = 250) {
+  # Get outcome name
   outcome <- names(wand_fit$blueprint$ptypes$outcomes)[1]
 
-  # TODO How should preprocessing be handled? If a user specifies y ~ s(log(x)) it seems like the
-  # smooth should be plotted on the log scale, right?
-
-  if (wand_fit$mode == "classification")
+  if (wand_fit$mode == "classification") {
     prediction_mode <- "prob"
-  else if (wand_fit$mode == "regression")
+  } else if (wand_fit$mode == "regression") {
     prediction_mode <- "numeric"
+  }
 
-  if (max(sapply(smooth_features, length)) > 2) {
+  if (max(sapply(wand_fit$smooth_specs, \(x) length(x$features))) > 2) {
     rlang::abort("Only smooths with a max of two features can currently be plotted.")
   }
 
-  # plot each smooth
-  smooth_plots <- list()
-  for (smooth in smooth_features) {
-    var_seq <- expand.grid(lapply(seq_along(smooth),
-                                  # max of 1000 points per variable
-                                  \(x) get_var_sequence(dplyr::pull(df, smooth[x]), seq_length)))
-    colnames(var_seq) <- smooth
+  lapply(wand_fit$smooth_specs, \(smooth_spec) {
+    # TODO probably a cleaner way to build this grid, maybe just use tidyr..
 
-    mean_df <- dplyr::select(df, -dplyr::all_of(smooth))
-    # mean for numeric, mode for factor
-    mean_df <- dplyr::summarise(
-      mean_df, dplyr::across(where(is.numeric), mean),
-      dplyr::across(where(is.factor), \(x) names(which.max(table(x)))[1]),
-      dplyr::across(where(is.character), \(x) names(which.max(table(x)))[1])
-    )
+    smooth_features <- smooth_spec$features
 
-    pdp_df <- cbind(mean_df, var_seq)
+    # Get the typical values for all predictors except the current smooth features
+    typical_df <- wand_fit$predictor_info$typical_df
+    typical_df <- typical_df[typical_df$.metric == "typical", ]
+    typical_df <- dplyr::select(typical_df, -dplyr::all_of(c(smooth_features, ".metric")))
 
-    pdp_df$.pred <- stats::predict(wand_fit, new_data = pdp_df, type = prediction_mode)[[1]]
+    # Create a grid across feature values
+    dg_info <- dplyr::select(wand_fit$predictor_info$typical_df, dplyr::all_of(smooth_features))
+    dg_info <- as.data.frame(t(dg_info))
+    colnames(dg_info) <- wand_fit$predictor_info$typical_df$.metric
+    dg <- lapply(seq_along(smooth_features),
+                 \(i) seq(from = dg_info$min[i], to = dg_info$max[i], by = dg_info$spacing[i]))
+    dg <- expand.grid(dg)
+    colnames(dg) <- smooth_features
 
-    if (length(smooth) == 1) {
-      pl <- ggplot2::ggplot(pdp_df, ggplot2::aes_string(x = smooth[1], y = ".pred")) +
+    # Combine typical features with the datagrid
+    dg <- dplyr::tibble(typical_df, dg)
+
+    # Get model predictions
+    dg$.pred <- stats::predict(wand_fit, new_data = dg, type = prediction_mode)[[1]]
+
+    # Plot, finally
+    if (length(smooth_features) == 1) {
+      pl <- ggplot2::ggplot(dg, ggplot2::aes_string(x = smooth_features[1], y = ".pred")) +
         ggplot2::geom_path()
     }
     else {
-      pl <- ggplot2::ggplot(pdp_df, ggplot2::aes_string(x = smooth[1], y = smooth[2],
-                                                        z = ".pred")) +
+      pl <- ggplot2::ggplot(dg, ggplot2::aes_string(x = smooth_features[1],
+                                                    y = smooth_features[2],
+                                                    z = ".pred")) +
         ggplot2::stat_contour_filled() +
         ggplot2::labs(fill = ".pred")
     }
 
-    smooth_plots[[length(smooth_plots) + 1]] <- pl
-  }
-
-  smooth_plots
+    pl
+  })
 }
 
 #' Builds a `ggraph::tbl_graph` showing data flow through a wand model
@@ -176,27 +147,12 @@ wand_plot_smooths <- function(wand_fit, df, seq_length = 250) {
 #'
 #' @export
 build_wand_graph <- function(wand_fit) {
-  # Get all features
-  features <- names(wand_fit$blueprint$ptypes$predictors)
-
-  # Get smooth features and smooth modules
-  smooth_nodes <- lapply(wand_fit$smooth_specs, \(x) {
-    paste0(x$torch_module, "\n",
-           "features: ", paste0(x$features, collapse = ", "), "\n",
-           paste0(names(x$torch_module_parameters), ": ",
-                  as.character(x$torch_module_parameters),
-                  collapse = "\n")
-    )
-  })
-  smooth_features <- lapply(wand_fit$smooth_specs, \(x) names(x$blueprint$ptypes$predictors))
-  names(smooth_features) <- smooth_nodes
-
-  # Linear features
-  linear_features <- setdiff(features, unlist(smooth_features))
+  # Get feature names
+  linear_features <- wand_fit$predictor_info$linear_predictors
+  smooth_features <- wand_fit$predictor_info$smooth_predictors
 
   # Get outcome
-  # If the outcome is a factor, then we care about the levels
-  if (is.factor(wand_fit$blueprint$ptypes$outcomes[[1]])) {
+  if (sapply(wand_fit$blueprint$ptypes$outcomes, is.factor)[1]) {
     outcomes <- levels(wand_fit$blueprint$ptypes$outcomes[[1]])
     outcomes <- paste0("Class: ", outcomes)
   } else {
@@ -205,13 +161,27 @@ build_wand_graph <- function(wand_fit) {
   }
   outcomes <- paste0("Predicted ", outcomes)
 
-  # Create nodes
-  nodes <- data.frame(name = c(features, names(smooth_features), outcomes, "linear_layer"))
+  # Get smooth modules
+  smooth_modules <- sapply(wand_fit$smooth_specs, \(x) {
+    paste0(#"features: ", paste0(names(x$predictors), collapse = ", "), "\n",
+      "torch module: ", x$torch_module_name, "\n",
+      "torch module parameters: \n",
+      paste0(names(x$torch_module_parameters), ": ",
+             as.character(x$torch_module_parameters),
+             collapse = "\n")
+    )
+  })
+  smooth_modules <- paste0(paste0(names(smooth_modules), "\n"), smooth_modules)
+
+  # Create nodes, add linear layer
+  nodes <- data.frame(name = c(linear_features, smooth_features,
+                               smooth_modules, "linear_layer", outcomes))
 
   # Create edges
   smooth_edges <- data.frame(
-    from = unlist(smooth_features),
-    to = rep(names(smooth_features), sapply(smooth_features, length))
+    from = smooth_features,
+    to = rep(smooth_modules,
+             times = sapply(wand_fit$smooth_specs, \(x) length(x$features)))
   )
   linear_layer_edges <- data.frame(
     from = c(smooth_edges$to, linear_features),
@@ -248,7 +218,7 @@ coef.wand <- function(object, ...) {
   # Note that the weights vector includes all the weights on the smoothed features, we don't
   # actually want those, so remove them.
   n_features <- ncol(model_weight)
-  if (length(object$smooth_specs) > 0) {
+  if (length(object$predictor_info$smooth_predictors) > 0) {
     n_smooth_features <- sum(sapply(object$smooth_specs, \(x) x$n_smooth_features))
   } else {
     n_smooth_features <- 0
@@ -261,9 +231,8 @@ coef.wand <- function(object, ...) {
     model_weight <- model_weight[ , 0, drop = F]
   }
 
-  # TODO This should have named rows and cols
   model_coefs <- rbind(model_bias, t(model_weight))
-  rownames(model_coefs) <- c("(Intercept)", rep("", nrow(model_coefs) - 1))
+  rownames(model_coefs) <- c("(Intercept)", object$predictor_info$linear_predictors)
   if (object$mode == "classification")
     colnames(model_coefs) <- levels(object$blueprint$ptypes$outcomes[[1]])
 

@@ -48,6 +48,11 @@ test_that("all `wand` interfaces work as expected", {
     colnames(bi_class_x_no_names) <- NULL
     wand(bi_class_x_no_names, bi_class_y[[1]])
   })
+  expect_error({
+    bi_reg_x |>
+      mutate(across(everything(), as.character)) |>
+      wand(bi_reg_y[[1]])
+  })
 
   # formula
   expect_s3_class(wand(bi_class_fmla, bivariate_train), "wand")
@@ -70,7 +75,7 @@ test_that("`wand` stops early when no improvement happens", {
     na.omit(
       wand(bi_reg_rec, bivariate_train,
            learn_rate = 0, stop_iter = 5, validation_prop = 0)$training_results$loss
-      ),
+    ),
     6
   )
 

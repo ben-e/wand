@@ -35,19 +35,15 @@ predict.wand <- function(object, new_data, type = NULL, ...) {
 
   # recall that recipes are molded/forged on downstream
   if ("recipe_blueprint" %in% class(object$blueprint)) {
-    forged_smooths <- lapply(object$smooth_specs,
-                             \(spec) hardhat::forge(forged_linear, spec$blueprint)$predictors)
+    forged_smooths <- lapply(object$smooth_blueprints,
+                             \(spec) hardhat::forge(forged_linear, spec)$predictors)
   } else {
-    forged_smooths <- lapply(object$smooth_specs,
-                             \(spec) hardhat::forge(new_data, spec$blueprint)$predictors)
+    forged_smooths <- lapply(object$smooth_blueprints,
+                             \(spec) hardhat::forge(new_data, spec)$predictors)
   }
 
   # Remove smoothed terms from the linear data
-  smooth_features_intersect <- intersect(unique(unlist(lapply(object$smooth_specs,
-                                                              \(i) i$features))),
-                                         names(forged_linear))
-  forged_linear <- dplyr::select(forged_linear, -dplyr::all_of(smooth_features_intersect))
-
+  forged_linear <- dplyr::select(forged_linear, dplyr::all_of(object$predictor_info$linear_predictors))
 
   if (is.null(type)) {
     if (object$mode == "regression")
@@ -76,7 +72,7 @@ predict_wand_bridge <- function(type, object, linear_predictors, smooth_predicto
   object$model_obj <- hydrate_model(object$model_obj)
 
   # Load model params into model and set eval mode
-  object$model_obj$load_state_dict(lapply(object$best_model_params, torch::torch_tensor))
+  object$model_obj$load_state_dict(lapply(object$model_params, torch::torch_tensor))
   object$model_obj$eval()
 
   predict_function <- get_wand_predict_function(type)

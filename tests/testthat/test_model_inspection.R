@@ -31,40 +31,26 @@ test_that("`wand_plot_loss` returns a plot", {
                                  show_labels = F), "ggplot")
 })
 
-test_that("`get_var_sequence` returns correct sequences", {
-  expect_length(get_var_sequence(rnorm(100), 10), 10)
-
-  expect_length(get_var_sequence(rnorm(1), 1), 1)
-
-  expect_length(get_var_sequence(1:250), 250)
-
-  expect_length(get_var_sequence(-1:-250), 250)
-
-  expect_length(get_var_sequence(mtcars$cyl), 3)
-
-  expect_error(get_var_sequence(letters))
-})
-
 test_that("`wand_plot_smooths` returns the valid plots", {
-  expect_s3_class(wand_plot_smooths(wand_fit_reg, mtcars)[[1]], "ggplot")
-  expect_s3_class(wand_plot_smooths(wand_fit_reg_early, mtcars)[[1]], "ggplot")
-  expect_s3_class(wand_plot_smooths(wand_fit_class, mtcars)[[1]], "ggplot")
+  expect_s3_class(wand_plot_smooths(wand_fit_reg)[[1]], "ggplot")
+  expect_s3_class(wand_plot_smooths(wand_fit_reg_early)[[1]], "ggplot")
+  expect_s3_class(wand_plot_smooths(wand_fit_class)[[1]], "ggplot")
 
-  expect_s3_class(wand_plot_smooths(wand_fit_reg, mtcars)[[2]], "ggplot")
-  expect_s3_class(wand_plot_smooths(wand_fit_class, mtcars)[[2]], "ggplot")
+  expect_s3_class(wand_plot_smooths(wand_fit_reg)[[2]], "ggplot")
+  expect_s3_class(wand_plot_smooths(wand_fit_class)[[2]], "ggplot")
 
-  expect_s3_class(wand_plot_smooths(wand_fit_reg, mtcars, seq_length = 1)[[1]], "ggplot")
-  expect_s3_class(wand_plot_smooths(wand_fit_class, mtcars, seq_length = 1)[[1]], "ggplot")
+  expect_s3_class(wand_plot_smooths(wand_fit_reg, seq_length = 1)[[1]], "ggplot")
+  expect_s3_class(wand_plot_smooths(wand_fit_class, seq_length = 1)[[1]], "ggplot")
 
-  expect_s3_class(wand_plot_smooths(wand_fit_reg, mtcars, seq_length = 100)[[1]], "ggplot")
-  expect_s3_class(wand_plot_smooths(wand_fit_class, mtcars, seq_length = 100)[[1]], "ggplot")
+  expect_s3_class(wand_plot_smooths(wand_fit_reg, seq_length = 100)[[1]], "ggplot")
+  expect_s3_class(wand_plot_smooths(wand_fit_class, seq_length = 100)[[1]], "ggplot")
 
   expect_error(wand_plot_smooths(wand_fit_reg_interact))
 })
 
 test_that("`wand_plot_smooths` returns the correct number of plots", {
-  expect_length(wand_plot_smooths(wand_fit_reg, mtcars), 2)
-  expect_length(wand_plot_smooths(wand_fit_class, mtcars), 2)
+  expect_length(wand_plot_smooths(wand_fit_reg), 2)
+  expect_length(wand_plot_smooths(wand_fit_class), 2)
 })
 
 test_that("`build_wand_graph` returns valid graphs", {

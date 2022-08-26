@@ -82,7 +82,7 @@ extract_smooths <- function(formula) {
     if (grepl("^s_", term)) {
       # get the actual smooth specification by evaluating the s function and save
       smooth_specs[[length(smooth_specs) + 1]] <- eval(parse(text = term))
-      # update formula to remove the smooth
+      # update formula to remove the smooth, but keep the term
       formula <- stats::update.formula(
         formula,
         paste0(c(
@@ -96,4 +96,102 @@ extract_smooths <- function(formula) {
 
   list(formula = formula,
        smooth_specs = smooth_specs)
+}
+
+#' Get mean 1d distance between points
+#'
+#' @param x A vector.
+#'
+#' @return The average distance between `x` points.
+spacing <- function(x) {
+  if (!is.numeric(x)) {
+    rlang::abort("`x` is not a valid type.")
+  }
+
+  x <- sort(unique(x))
+  x_spacing <- sapply(2:length(x), \(i) x[i] - x[i - 1])
+  mean(x_spacing)
+}
+
+# Borrowing this from the modelr package
+# https://github.com/tidyverse/modelr/blob/main/R/typical.R
+typical <- function(x, ...) {
+  UseMethod("typical")
+}
+
+#' @export
+typical.numeric <- function(x, ...) {
+  stats::median(x, na.rm = TRUE)
+}
+
+#' @export
+typical.factor <- function(x, ...) {
+  counts <- table(x, exclude = NULL)
+  typ <- levels(x)[max(counts) == counts]
+  factor(typ[1], levels = levels(x))
+}
+
+#' @export
+typical.character <- function(x, ...) {
+  counts <- table(x, exclude = NULL)
+  typ <- names(counts)[max(counts) == counts]
+  typ[1]
+}
+
+#' @export
+typical.logical <- function(x, ...) {
+  mean(x, na.rm = TRUE) >= 0.5
+}
+
+#' @export
+typical.integer <- function(x, ...) {
+  unname(stats::quantile(x, 0.5, type = 1, na.rm = TRUE))
+}
+
+#' @export
+typical.ordered <- function(x, ...) {
+  typ <- levels(x)[stats::quantile(as.integer(x), 0.5, type = 1, na.rm = TRUE)]
+  factor(typ, levels = levels(x), ordered = T)
+}
+
+build_typical_df <- function(x, ...) {
+  UseMethod("build_typical_df")
+}
+
+#' @export
+build_typical_df.data.frame <- function(x, ...) {
+  typical_df <- dplyr::summarise(x, dplyr::across(.fns = typical))
+  typical_df$.metric <- "typical"
+
+  spacing_df <- dplyr::summarise(x, dplyr::across(where(is.numeric), spacing))
+  spacing_df$.metric <- "spacing"
+
+  min_df <- dplyr::summarise(x, dplyr::across(where(is.numeric), min))
+  min_df$.metric <- "min"
+
+  max_df <- dplyr::summarise(x, dplyr::across(where(is.numeric), max))
+  max_df$.metric <- "max"
+
+  typical_df <- dplyr::bind_rows(typical_df, spacing_df, min_df, max_df)
+
+  typical_df
+}
+
+#' @export
+build_typical_df.matrix <- function(x, ...) {
+  typical_df <- as.data.frame(t(apply(x, 2, typical)))
+  typical_df$.metric <- "typical"
+
+  spacing_df <- as.data.frame(t(apply(x, 2, spacing)))
+  spacing_df$.metric <- "spacing"
+
+  min_df <- as.data.frame(t(apply(x, 2, min)))
+  min_df$.metric <- "min"
+
+  max_df <- as.data.frame(t(apply(x, 2, max)))
+  max_df$.metric <- "max"
+
+  typical_df <- dplyr::bind_rows(typical_df, spacing_df, min_df, max_df)
+
+  typical_df
 }
