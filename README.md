@@ -26,8 +26,8 @@ The development version of can be installed from
 [GitHub](https://github.com/ben-e/wand) with:
 
 ``` r
-# install.packages("pak")
-pak::pak("ben-e/wand")
+# install.packages("remotes")
+remotes::install_github("ben-e/wand")
 ```
 
 Note that `wand` is still in active development, and should not be
@@ -35,22 +35,21 @@ considered stable.
 
 ## Example
 
-The primary model fitting function, `wand::wand` has formula, x/y, and
-recipe user interfaces, and compatibility with the `tidymodels`
-ecosystem via the `nn_additive_model` specification and `wand` engine.
-
-Using `wand` alone:
+Setup:
 
 ``` r
 suppressPackageStartupMessages({
+  # Modeling
   library(wand)
-  library(dplyr)
-  library(ggplot2)
-  library(ggraph)
   library(parsnip)
   library(recipes)
   library(workflows)
   library(yardstick)
+  # Data manipulation
+  library(dplyr)
+  # Data viz
+  library(ggplot2)
+  library(ggraph)
 })
 
 set.seed(4242)
@@ -62,7 +61,15 @@ df <- expand.grid(x = seq(-2, 2, 0.1),
          class = factor((abs(x) > 1 | abs(y) > 1), 
                         levels = c(T, F), 
                         labels = c("out", "in")))
+```
 
+The primary model fitting function, `wand::wand` has formula, x/y, and
+recipe user interfaces, and compatibility with the `tidymodels`
+ecosystem via the `nn_additive_model` specification and `wand` engine.
+
+Using `wand` alone:
+
+``` r
 # Fit a model with one linear term and one smooth interaction
 wand_fit <- wand(class ~ z + s_mlp(x, y),
                  data = df)
@@ -121,7 +128,7 @@ wand_wf_fit %>%
   geom_node_label(aes(label = name))
 ```
 
-<img src="man/figures/README-unnamed-chunk-5-1.png" width="100%" />
+<img src="man/figures/README-unnamed-chunk-6-1.png" width="100%" />
 
 Next, we should take a look at the model’s training loss to look for any
 hints of overfitting.
@@ -132,19 +139,18 @@ wand_wf_fit %>%
   wand_plot_loss()
 ```
 
-<img src="man/figures/README-unnamed-chunk-6-1.png" width="100%" />
+<img src="man/figures/README-unnamed-chunk-7-1.png" width="100%" />
 
 Now we can actually inspect the results of model training by looking at
 coefficients for linear terms.
 
 ``` r
-# TODO `coefs` function needs rownames :)
 wand_wf_fit %>% 
   extract_fit_engine() %>% 
   coef()
 #>                     out           in
 #> (Intercept) -0.06551073 -0.003939368
-#>              0.10245648  0.002335455
+#> z            0.10245648  0.002335455
 ```
 
 Finally, for smooth terms, we can plot the actual smooth functions. In
@@ -153,7 +159,6 @@ The `wand_plot_smooths` function returns a list with an entry for each
 smooth, in this case we’re only interested in the first and only plot.
 
 ``` r
-# Also, is it worth noting that softmax probabilities aren't really..well calibrated?
 smooth_contours <- wand_wf_fit %>% 
   extract_fit_engine() %>%
   wand_plot_smooths(df)
@@ -165,7 +170,7 @@ smooth_contours[[1]] +
   coord_fixed()
 ```
 
-<img src="man/figures/README-unnamed-chunk-8-1.png" width="100%" />
+<img src="man/figures/README-unnamed-chunk-9-1.png" width="100%" />
 
 ## Feature Roadmap
 
@@ -206,11 +211,11 @@ smooth_contours[[1]] +
 
 ### Interpretability Tools
 
--   [ ] Implement `coef` method to extract linear coefficients.
+-   [x] Implement `coef` method to extract linear coefficients.
 -   [ ] Implement `summary` method.
--   [ ] Implement `plot` methods for plotting training curves and smooth
+-   [x] Implement `plot` methods for plotting training curves and smooth
     functions (ala `mgcv`).
--   [ ] Implement graph/module plot to show how features flow through
+-   [x] Implement graph/module plot to show how features flow through
     modules.
 -   [ ] Add compatibility with the `marginaleffects` package.
 -   [ ] Add compatibility with the `ggeffects` package.
