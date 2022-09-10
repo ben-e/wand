@@ -164,7 +164,7 @@ build_wand_graph <- function(wand_fit) {
   # Get smooth modules
   smooth_modules <- sapply(wand_fit$smooth_specs, \(x) {
     paste0(#"features: ", paste0(names(x$predictors), collapse = ", "), "\n",
-      "torch module: ", x$torch_module_name, "\n",
+      "torch module: \n", x$torch_module$classname, "\n",
       "torch module parameters: \n",
       paste0(names(x$torch_module_parameters), ": ",
              as.character(x$torch_module_parameters),

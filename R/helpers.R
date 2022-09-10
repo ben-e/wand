@@ -67,7 +67,7 @@ dots_to_formula <- function(...) {
 }
 
 #' Takes a formula, and replaces any smooth specs with the corresponding formula. Returns the
-#' updated formula and the smooth specs extracted from the formula
+#' updated formula and the smooth specs extracted from the formula.
 #'
 #' @param formula A formula that may contain `wand` `s_` functions.
 #'

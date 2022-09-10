@@ -21,7 +21,6 @@ build_wand_dataset <- function(linear_predictors, smooth_predictors, outcome, re
   }
 
   # Deep/smooth features
-
   for (i in seq_along(smooth_predictors)) {
     ds_tensors[[names(smooth_predictors)[i]]] <- torch::torch_tensor(
       as.matrix(smooth_predictors[[i]]),
